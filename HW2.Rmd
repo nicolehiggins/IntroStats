@@ -1,0 +1,392 @@
+---
+title: "Introduction to Statistical Modeling  <br> Homework 2"
+author: "Nicole Higgins"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+library(gridExtra)
+library(ggplot2)
+library(dplyr)
+library(readr)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+# Mercury concentration in fish
+
+Rivers in North Carolina contain small concentrations of mercury which can accumulate in fish over their lifetimes. Since mercury cannot be excreted from the body, it builds up in the tissues of the fish. The concentration of mercury in fish tissue can be obtained at considerable expense by catching fish and sending samples to a lab for analysis. Directly measuring the mercury concentration in the water is impossible since it is almost always below detectable limits. A study was conducted in the Wacamaw and Lumber rivers to investigate mercury levels in tissues of large mouth bass. At several stations along each river, a group of fish were caught, weighed, and measured. In addition, a filet from each fish caught was sent to the lab so that the tissue concentration of mercury could be determined for each fish. Every row in the file `Mercury.csv` corresponds to a single fish. The recorded information for each fish is:
+
+- **River**: Lumber or Wacamaw
+- **Station**: A station number (0, 1, ... , 15)
+- **Length**: (in centimeters)
+- **Weight**: (in grams)
+- **Concen**: Mercury concentration (in parts per million or ppm)
+
+Let's load the data set:
+```{r}
+mercury<-read_csv("https://www.macalester.edu/~dshuman1/data/155/Mercury.csv")
+mercury$Station<-factor(mercury$Station)
+```
+
+# Models with zero or one explanatory variables
+
+```{exercise, name="Examine the distribution of mercury concentrations in all fish"}
+   
+a. Make a boxplot of the `Concen` variable. Does it show any signs of skewness, and if so, which type? You might also want to look at the density plot of `Concen`.    
+  b. According to the "1.5 IQR" rule of thumb, mercury concentrations above what value will be considered "potential outliers"?   
+  c. Find the mean and median concentration in these 171 fish. Does a comparison of the mean and median indicate skewness. Briefly explain.   
+d. Find the variance of the concentrations. Why do we define standard deviation when we have already defined variance?
+
+```
+
+**a.**
+```{r}
+mercury %>%
+  ggplot(aes(x=Concen)) +
+  geom_boxplot() +
+  geom_density()
+```
+The data are skewed right.
+**b.**
+```{r}
+summary(mercury$Concen)
+(1.6-.6)*1.5 + 1.6
+```
+Any concentration above 3.1 is an outlier.
+**c.** Since the mean (1.192) is greater than the median (0.93), there is a right skew.
+**d.** We define standard deviation (variance)^.5 to convert back to the units of observation.
+```{r}
+var(mercury$Concen)
+sd(mercury$Concen)
+```
+
+
+
+```{exercise, name="Using a fish's weight or length to explain its mercury concentration"}
+   
+a. Using the `lm` function, fit a model for `Concen` that uses no explanatory variables, save your model as `mod0`, and report the coefficient from this model. Generally, what will the coefficient from such a model represent?   
+  b. Use the code `residuals<-resid(mod0)` to make a new variable called `residuals` that contains all of the 171 residuals from the model you fit for `Concen` in (a). Find the sum of squared residuals using the command `sum(residuals^2)`. Also compute the variance of the residuals. How does it compare to the variance of the response variable `Concen`?   
+c. Suppose we are interested in determining how mercury concentration changes as the weight of a fish changes, or as its length changes. Make scatterplots to describe these two relationships. For which explanatory variable (`Weight` or `Length`) is the relationship stronger?   
+  d. Fit a model for `Concen` that uses `Length` as an explanatory variable and report the intercept and slope of the line of best fit.    
+e. Repeat with `Weight` in place of `Length`.   
+f. Find the sum of squared residuals for the two models in (d) and (e). Does a comparison of the sum of squared residuals agree with your answer to part (c)?    
+  g. According to this model, what is the mercury concentration, on average, of a fish whose length is 50 centimeters? 
+
+```
+**a.** This represents the mean of all Concen data.
+```{r}
+mod_0<-lm(Concen~1,data=mercury)
+mod_0$coefficients
+mean(mercury$Concen)
+```
+**b.** The variances are identical.
+```{r}
+residuals<-resid(mod_0)
+sum(residuals^2)
+var(residuals)
+var(mercury$Concen)
+```
+**c.** The relationship is more strongly correlated comparing Concen to Length.
+```{r}
+ggplot(mercury, aes(x = Weight, y = Concen)) +
+  geom_point()
+ggplot(mercury, aes(x = Length, y = Concen)) +
+  geom_point()
+```
+**d.** Intercept: -1.13164542, Slope: 0.05812749
+```{r}
+mod_1<-lm(Concen~1+Length,data=mercury)
+mod_1$coefficients
+```
+**e.** Intercept: 0.6386812524, Slope: 0.0004818078 
+```{r}
+mod_2<-lm(Concen~1+Weight,data=mercury)
+mod_2$coefficients
+```
+**f.** The sum is smaller when comparing Length, thus is more strongly correlated as we predicted.
+```{r}
+sum(resid(mod_1)^2)
+sum(resid(mod_2)^2)
+```
+**g.** The concentration would be 1.774729 ppm on average
+```{r}
+-1.13164542 + 0.05812749*50
+```
+
+
+
+```{exercise, name="Mercury concentrations by river"}
+   
+a. Make side-by-side boxplots of the concentrations by river. Does it seem like `River` is a good explanatory variable for modeling `Concen`? Briefly explain.   
+b. Use `lm` to fit the model `Concen` ~ 1 + `River`.   
+c. Interpret the model coefficients.   
+d. Use your model coefficients to compute the mean mercury concentration of the fish sampled from each river.    
+
+```
+**a.** While Wacamaw has a greater spread than Lumber, there aren't significant differences in median, mean, min and max values.
+```{r}
+ggplot(mercury, aes(x = River, y = Concen)) +
+  geom_boxplot()
+```
+**b.**
+```{r}
+mod_3 <- lm(Concen ~ 1 + River, data = mercury)
+mod_3
+```
+**c.** The intercept, 1.0781, is the expected concentration of mercury in the Lumber river fish; the expected mercury concentration in the Wacamaw river is 0.1983 greater than that of the Lumber river.  
+**d.**
+```{r}
+(Lumber <- 1.0781)
+(Wacamaw <- 1.0781 + 0.1983)
+```
+
+
+
+# Models with multiple explanatory variables
+
+```{exercise, name="Multiple explanatory variables"}
+Now let's consider both `Station` and `Length` as explanatory variables for `Concen`.
+   
+\noindent a. Examine the data. Are certain stations located at certain rivers?   
+b. Redo the scatter plot of `Concen` vs. `Length` from above, except facet it by station number. You may also want to add different colors for different stations.   
+c. Fit the model `Concen` ~ 1 + `Length` + `Station`.   
+d. Interpret the `Station8` coefficient in your model (it should be equal to 0.31688).   
+e. According to this model, what is the mercury concentration, on average, of a fish of length 50 cm collected at station 8? How does that compare to the answer above for the model that only considered the length of the fish?   
+f. Try adding a `+geom_smooth(method="lm",se=FALSE)` to your faceted scatter plot. Do the best fit lines correspond to the model we generated in this exercise? Explain your answer. 
+
+```
+
+**a.** Yes, 0-6 are at Lumber and 7-15 are at Wacamaw  
+**b.**
+```{r}
+ggplot(mercury, aes(x = Length, y = Concen, color = Station)) +
+  geom_point(size = .5) +
+  facet_wrap(~Station)
+```
+**c.** 
+```{r}
+mod_4 <- lm(`Concen` ~ 1 + `Length` + `Station`, data = mercury)
+```
+
+**d.** The expected concentration at Station 8 is 0.31688 greater than that of Station 0 at any length.
+**e.** This prediction is 0.223562 less than our prior prediction, this is a more accurate prediction.
+```{r}
+new_vals=data.frame(Length=c(50),Station=as.factor(c(8)))
+predict(mod_4, new_vals)
+1.774729 - 1.551167 
+```
+**f.** These best fit lines do not correspond to the model because they aren't parallel.
+```{r}
+ggplot(mercury, aes(x = Length, y = Concen, color = Station)) +
+  geom_smooth(method = "lm", se = FALSE, size = .2, color = "black") +
+  geom_point(size = .5) +
+  facet_wrap(~Station) 
+```
+
+
+
+# Model evaluation
+
+So far, we have considered five different models:
+
+- `Concen` ~ 1    
+- `Concen` ~ 1 + `Length`   
+- `Concen` ~ 1 + `Weight`  
+- `Concen` ~ 1 + `River` 
+- `Concen` ~ 1 + `Station` + `Length`
+
+Let's also consider a sixth below with all of the variables we have:
+
+- `Concen` ~ 1 + `River` + `Station` + `Length` + `Weight`
+
+
+```{r}
+modKitCaboodle<-lm(Concen~1+Station+River+Length+Weight,data=mercury)
+```
+
+```{exercise, name="Partition of variance"}
+   
+a. Complete the following table for each of the six models mentioned thus far:
+  
+```
+
+Model                                         Var(response)  Var(fitted)  Var(resid)  R^2
+--------------------------------------------- -------------- ------------ ----------- -----
+`Concen`~1                                                                0.580131    1.009282
+`Concen`~1+`Length` 
+`Concen`~1+`Weight`
+`Concen`~1+`River`
+`Concen`~1+`Station`+`Length`
+`Concen`~1+`River`+`Station`+`Length`+`Weight`
+
+```{r}
+var(resid(mod_0)^2)
+```
+
+
+\noindent b. Which model has the highest $R^2$ value? Does that make it the best model?
+
+
+```{exercise}
+In the data description, it said that obtaining mercury concentration in fish tissue by sending samples to a lab is expensive, yet, this study did just that. Of course, other aspects associated with each of the fish were also measured (i.e. `River`, `Length`, `Weight`, and `Station`). Can you think of a way in which, as a result of the data collected in this study, money and time could be saved in subsequent work?
+
+```  
+
+# Project phase 1
+
+**Important note**: If you are going to do the project with a partner, only one of you needs to submit your joint answers to this section on your homework. The other partner can leave this section blank and just write, "See the answers on my partner Jane Doe's submission."
+
+
+Statistics and data provide one lens through which to build knowledge of the world around us.  Every day, we encounter articles, reports, and studies that utilize data to communicate information, inform policy, and inspire research.  STAT 155 provides the foundational tools needed to review such material critically and responsibly.  STAT 155 also provides the tools needed to conduct analyses *of your own*.  Building the confidence to do so outside the classroom setting takes practice, thus inspiring the goals of this project:
+
+- Practice applying STAT 155 tools in *open-ended, unguided setttings*.    
+- Hone your communication skills.  *Doing* statistics is only meaningful if we can *communicate* what we've done.    
+
+In this project, you will apply the tools we'll learn throughout the semester to complete a data analysis from start to finish: exploring data; selecting, fitting, and interpreting a model; making inference about a larger population; and synthesizing results. You will build up this project in your weekly homework assignments, culminating with a final report at the end of the module. 
+
+
+\
+
+
+```{exercise,name="Partner or solo?"}
+
+Are you going to work on the project with a partner? If so, list your partner here.
+   
+```
+
+ 
+\
+\
+
+You may choose from the following five data sets for your project:
+
+\
+
+1. **US National Health & Nutrition Examination Study (NHANES)**
+
+The `NHANES` data in the `NHANES` package contains demographic, health, and lifestyle information for 10,000 people in the United States, collected via the [US National Health & Nutrition Examination Study](https://www.cdc.gov/nchs/nhanes/index.htm). The NHANES data are accessible via the NHANES R package. The first time you use this package, you'll need to install it:
+
+```{r eval = FALSE}
+install.packages(NHANES) # only do this once in the console!
+```
+
+Once you've installed the package, you can load and access the data:
+```{r eval = FALSE}
+library(NHANES)
+data(NHANES)
+head(NHANES) # look at first six rows
+```  
+
+To read information about the data (how it was collected, what variables it contains, etc.), type the following in the console:
+```{r eval = FALSE}
+?NHANES
+```
+
+\
+
+2. **Kiva microlending**
+
+Kiva is a non-profit that allows people from around the world to lend small amounts to others to start or grow a business, go to school, access clean energy, etc. Since its founding in 2005, more than $1.6 billion in loans to over 3.9 million borrowers have been funded. Kiva has field partners who generally act as intermediaries between borrowers and Kiva (lenders). They evaluate borrower risk, post loan requests on Kiva, and process payments. The following command loads two table with data from Kiva from 2005-2012. The first has information about Kiva’s field partners, and the second has information about individuals loans. The codebooks are [here](http://www.macalester.edu/~dshuman1/data/112/Kiva/partners_vars.xlsx) and [here](http://www.macalester.edu/~dshuman1/data/112/Kiva/loans_vars.xlsx).
+  ```{r eval = FALSE}
+  library(readr)
+  partners<-read_csv("http://www.macalester.edu/~dshuman1/data/112/Kiva/partners2.csv") 
+  loans<-read_csv("http://www.macalester.edu/~dshuman1/data/112/Kiva/loans.csv")
+  ```    
+     
+\            
+
+3. **Flight delays (Kaggle)**
+
+Kaggle, a competition sight, assembled [data on flight delays](https://www.kaggle.com/usdot/flight-delays).The full set of flight delays data has more than 5.8 million flights. I recommend to start working with a smaller subset of the data, and therfore have made a subset that includes all flights in the first 15 days of January 2015 and in the first 15 days of July 2015:
+
+```{r eval = FALSE}
+library(readr)
+airlines <- read_csv("https://www.macalester.edu/~dshuman1/data/112/flights/airlines.csv")
+airports <- read_csv("https://www.macalester.edu/~dshuman1/data/112/flights/airports.csv")
+flights <- read_csv("https://www.macalester.edu/~dshuman1/data/112/flights/flights_jan_jul_sample2.csv")
+```    
+
+If you choose this dataset for your project, your analysis will focus on the data in the `flights` dataset, but `airlines` and `airports` provide useful information on the airline and airport abbreviations, respectively, contained in the `flights` dataset. 
+If after working with this smaller set, you wish to expand your analysis to the entire data set from Kaggle, you are welcome, but not required to do so.
+
+\
+
+4. **College Scorecard**
+
+The [College Scorecard project](https://collegescorecard.ed.gov/data/) is designed to increase transparency, putting the power in the hands of students and families to compare how well individual postsecondary institutions are preparing their students to be successful. This project provides data to help students and families compare college costs and outcomes as they weigh the tradeoffs of different colleges, accounting for their own needs and educational goals.
+
+These data are provided through federal reporting from institutions, data on federal financial aid, and tax information. These data provide insights into the performance of institutions that receive federal financial aid dollars, and the outcomes of the students of those institutions.
+   
+- "Clean" version of the data: Download the file [Scorecard.csv](https://drive.google.com/file/d/19phOZYEcECYYGVnxA7wEFMw0Cm8an1-d/view?usp=sharing)   
+- Variable descriptions: [Data dictionary](https://drive.google.com/file/d/1pxQjf-n0LZvCEllIJGpl2FBGQUqDxaIs/view?usp=sharing)    
+- Note that there are more variables in the data dictionary than are actually available in the clean version of the data. Once you load the dataset into R, you can check which variables are in the dataset with a command like this: `names(nameofdata)`
+
+\
+
+5. **U.S. election results by county**
+
+This data set includes demographic and past federal and state election data for counties in the United States from 2012 to 2016. 
+
+County-level demographics are estimated from the American Community Survey, and election results are curated by the [MIT Election Data and Science Lab](https://electionlab.mit.edu/data).
+   
+- "Clean" version: Download the file [Election.csv](https://drive.google.com/file/d/1LoMNUyh5q5dMVQNESwcJSgCmkyx4QlIQ/view?usp=sharing)   
+- Variable descriptions: [Codebook](https://github.com/MEDSL/2018-elections-unoffical/blob/master/election-context-2018.md)   
+- Additional variables added by STAT 155 instructors:
+  - `turnout_pct` = `vote count totals`/`cvap`
+  - `RepWon` = 1 if `Rep count` > `Dem count` & `Rep count` > `Otherpres count`; 0 otherwise
+  - `Repmargin` = `Rep pct` - `Dem pct`
+
+
+
+\
+
+```{exercise, name="Choice of data set"}   
+
+Which of these five data sets will you use for your project?  
+  
+```
+
+\
+
+```{exercise, name="Data structure"}   
+   
+
+Import your data into RStudio/R Markdown. Summarize the following: 
+
+a. The number of cases and what they represent.     
+b. The number of variables and, in general, what they measure.  (No need to go through every variable.  Simply describe the type of information you have.)  
+
+```
+
+\
+
+
+```{exercise, name="Research questions"}
+   
+   
+a. List 2-3 specific research questions that you might explore using this data set.   
+b. With respect to these research questions, identify which variable is your response.  This can either be quantitative or categorical.  Also identify a list of 2^+^ predictors.
+
+```
+
+
+\
+
+```{exercise,name="Data visualization"}
+     
+
+Construct a series of four data visualizations that inform your research question(s) (you do not have to explore all of your potential research questions here, but you may).  Present these as: viz + 1 sentence summary + viz + 1 sentence summary + ...
+    
+Combined, the viz should tell a story and follow a natural progression.  Use the following structure:    
+   
+a. Visualization 1: a simple univariate visualization of your main variable of interest (the response).   
+b. Next visualizations: simple univariate visualizations of your predictor variables.      
+c. Last visualizations: visualizations of the relationships between your variables.  *At least 1 of these visualizations must have 3^+^ variables.*    
+
+  
+```    
+

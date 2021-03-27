@@ -1,0 +1,1028 @@
+---
+title: "Introduction to Statistical Modeling <br> HW1: Data Collection, Structure, Quality, and Visualization"
+author: "Nicole Higgins"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+```{r setup,echo=FALSE,warning=FALSE,message=FALSE}
+library(tidyverse)
+library(gridExtra)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://www.macalester.edu/~dshuman1/data/155/class_flow.png")
+```
+
+> **Statistics** is the practice of using data from a sample to make inferences about some broader population of interest.
+
+
+# Data Collection
+
+***Sampling bias*** can occur if a sampling method produces samples that are not representative of the population of interest. Common sources of sampling bias are   
+- ***convenience samples:*** sample of subjects that are convenient to collect   
+- ***volunteer samples:***  a convenience sample of subjects that volunteer to participate   
+- ***nonresponse bias:*** subjects who refuse to participate in a study are systematically different than those who participate   
+- ***response bias:*** subjects respond incorrectly or not according to their actual beliefs
+as a result of direct lies, question wording, gender/race/authority of the data collector, etc.
+
+\
+
+```{exercise}
+The government performs a monthly assessment of unemployment rate. Suppose that employees call a randomly selected sample of people from the phone book between the hours of 9am and 5pm, Monday through Friday. Further, they ignore households that do not pick up the phone.   
+
+a. Explain why this convenience sample is not representative of the population.   
+b. Explain how this might bias the estimate of unemployment rate. That is, do you
+think the estimate will be too high? Too low? About right?
+
+```
+
+\
+**a.** The average work day is 9-5, this means that those employed are less likely to be home during those hours so they would be left out of the sample pool.   
+**b.** Since those who are unemployed are *more* likely to pick up during the given hours, the estimate of unemployment rate will be higher than the actual rate.
+
+```{exercise}
+Suppose we want to assess the stress levels among Macalester students. We carefully craft a survey and send it to 200 randomly selected students.   
+
+a. How might the nonrespondents to our survey differ from the respondents?   
+b. How might this bias our conclusions about stress on campus?   
+c. Is this an example of nonresponse or response bias?
+
+```
+
+\
+**a.** Those who do not respond likely have other, relatively more important things on their plate than the survey.  
+**b.** Since those who are more stressed are less likely to respond to the survey, we will calculate lower stress levels than actually exist.  
+**c.** This is an example of a nonresponse bias.  
+
+```{exercise}
+A 2013 article in the Huffington Post ([click here](http://www.huffingtonpost.com/2013/09/03/syria-airstrike-polls_n_3861639.html)) reviewed the results of several polls regarding U.S. involvement in Syria.   
+
+a. 42% of respondents in the NBC poll were in favor of U.S. involvement. Only 25% of respondents in the HuffPost/YouGov poll were in favor of U.S. involvement. Assuming all else is equal (i.e. the two samples are equally representative of the population), explain one possible reason for such a large discrepancy between these two polls.   
+b. Is this an example of nonresponse or response bias?
+
+```
+
+\
+**a.** If there exist biases within who is sharing the poll (ex. NBC promotes U.S. involvement or is overall more conservative than HuffPost/YouGov), those who visit the sites will be affected by such biases.  
+**b.** This is an example of a response bias.  
+
+```{exercise}
+Watch [this clip](http://www.cc.com/video-clips/xd8n18/the-daily-show-with-jon-stewart-poll-bearers) from The Daily Show. What kind of sampling bias is Jon Stewart mocking? That is, what is the problem with the polls being reported in these news clips?   
+  
+```  
+
+\
+**He is mocking a response bias, as these News channels are preaching their opinions before asking their viewers if they agree or not.**
+\
+
+# Data Structure & Quality
+
+
+## Getting started 
+
+**Before we start:**
+
+- This is a hands on introduction to data visualization concepts and techniques. You'll make some mistakes along the way!
+- Before getting started, we need to load the `ggplot2` and `dplyr` *packages*. A package is a set of functions written by R users that can be loaded into your RStudio session. The `ggplot2` package contains nice visualization functions, and the `dplyr` package contains nice functions for wrangling data.
+    ```{r eval=TRUE, warning=FALSE, message=FALSE}
+    library(ggplot2)
+    library(dplyr)
+    ```   
+    
+    **You only have to type this at once every time you open up RStudio / once at the top of each Rmd document.**
+    
+    If you get in error when trying to load either package, it either means there's a typo or that you haven't installed this package. If it's the latter, type the following into the *Console*. You only have to do this once - it will remain installed until you update your software.
+    
+    ```{r eval=FALSE}
+    install.packages(c("ggplot2", "dplyr"))
+    ```
+
+**The data**
+
+We will be using data from the [Gapminder Foundation](https://www.gapminder.org/), a Swedish non-profit organization that promotes global development on the basis of data. You can read more about the Gapminder philopsophy [here](https://www.gapminder.org/about-gapminder/).
+
+Our data will come from the a dataset called `gapminder` in the R package `dslabs`. This dataset contains information on health, income, and population by country. Install this package:
+
+```{r, eval=FALSE}
+install.packages("dslabs")
+```
+
+Then load the package and the data:
+
+```{r}
+library(dslabs)
+data(gapminder)
+```
+
+If you are interested in exploring more of Gapminder's data, I encourage you to check out https://www.gapminder.org/data/.
+
+## ggplot and dplyr
+
+In this course, we'll largely construct visualizations using the `ggplot` function from the `ggplot2` R package. NOTE: `gg` is short for "grammar of graphics". Though the `ggplot` learning curve can be steep, its grammar is intuitive and generalizable once mastered. The best way to learn about `ggplot` is to just play around. Don't worry about memorizing the syntax. Rather, focus on the *patterns* and *potential* of their application. Here's a [link](https://github.com/rstudio/cheatsheets/raw/master/data-visualization-2.1.pdf) to a helpful ggplot cheat sheet (also available on Moodle).
+
+Visualizing data often requires wrangling it into an appropriate form. The `dplyr` package will help us wrangle and summarize data. In most cases, I will provide the code needed to perform data wrangling operations or ask you to make a very small modification, so don't worry about memorizing syntax here.
+
+<center>
+<img src="https://www.rstudio.com/wp-content/uploads/2014/04/ggplot2.png" width="100">
+<img src="https://www.rstudio.com/wp-content/uploads/2014/04/dplyr.png" width="100">
+</center>
+\
+
+```{exercise, name="Exploring the data structure"}
+   
+a. Examine the first six cases of the `gapminder` data set. What is the unit of observation (i.e., what does each row correspond to)?   
+b. Find the dimensions of the data. (How many cases and variables are there?)   
+c. Examine the variable names.
+    
+```
+
+\
+**a.** The rows correspond to various countries' stats from 1960-2016.  
+**b.** There are 10545 cases of 9 variables.  
+**c.** These variables are all some measure of a country's development, including GDP and infant mortality.
+
+
+```{exercise,name="Thinking about data quality"}
+Is this data reliable? How do you think information on metrics such as infant mortality and fertility are measured? Go to https://www.gapminder.org/data/ and search for "fertility" in the top table. Can you find any information on how fertility rates were collected?
+
+```
+
+\
+**There is only a vague description, they do not share how the rates were collected. I assume they collect it from each country's government who tracks birth and death rates.**
+\
+
+# Univariate Data Visualization
+
+Once we understand its structure, we can *examine* and *tell a story* with our data!  Data visualization is the first natural step.  Why?
+
+- Visualizations help us understand what we're working with: What are the scales of our variables?  Are there any outliers, i.e. unusual cases?  What are the patterns among our variables?    
+- This understanding will inform our next steps: What statistical tool / model is appropriate?    
+- Once our analysis is complete, visualizations are a powerful way to communicate our findings and tell a story.
+
+The appropriate visualization depends on whether the variable is *categorical* or *quantitative*, so we will examine both here.
+
+## Univariate visualization for categorical variables
+
+> **Research question:**
+>
+> Over the years, how many countries have had life expectancies of over 50 years? Of over 70 years?
+
+> As you visualize categorical variables, keep in mind:
+>
+> - **Variability**: Are cases evenly spread out among the categories or are some categories more common than others?
+> - **Context**: In the context of your research, what do you learn from the plot or table? How would you describe your findings to a broad audience?
+
+
+### Tables
+
+Tables are a good first pass to see how many cases fall into different categories. The code below makes tabulations that will help you answer the research question above, for the year 1994.
+
+```{r}
+## Create a categorical variable called life_exp_cat that breaks life expectancy into 3 categories: 0-50, 50-70, >70
+gapminder <- gapminder %>%
+  mutate(life_exp_cat = cut(life_expectancy, c(0,50,70,Inf)))
+
+## Select data only from 1994
+gapminder94<-gapminder%>%
+  filter(year==1994)
+
+## How many cases (countries) fall into these 3 categories in 1994?
+gapminder94 %>%
+  count(life_exp_cat)
+```
+
+The `%>%` is called a **pipe operator**. It is used to "pipe" the object before it/on its left into the function after it/on its right. It makes for more readable code. In RStudio, the keyboard shortcuts to type the pipe are Ctrl+Shift+M on Windows and Command+Shift+M on Macs.
+
+
+\
+
+```{exercise}
+   
+a. Explain what each of the `mutate`, `cut`, and `count` functions are doing in the code above.  
+b. Make a list of all countries with a life expectancy less than or equal to 50 years in 1994.   
+c. Redo the analysis above to see how many countries fall into these 3 categories in 2016.   
+d. Make a list of all countries with a life expectancy less than or equal to 50 years in 2016.  
+
+```
+
+\
+**a.** mutate is adding a column variable for various bins of life expectancy, these bins are created using the cut function. Count is getting a numerical count of how many data points are in each bin.  
+**b.**
+```{r}
+gapminder94_50<-gapminder%>%
+  filter(year==1994) %>%
+  filter(life_exp_cat=="(0,50]") %>%
+  select(country, life_expectancy)
+gapminder94_50
+```
+**c.**  
+```{r}
+gapminder16<-gapminder%>%
+  filter(year==2016)
+
+## How many cases (countries) fall into these 3 categories in 1994?
+gapminder16 %>%
+  count(life_exp_cat)
+```
+**d.**  
+```{r}
+gapminder16_50<-gapminder16 %>%
+  filter(life_expectancy <= 50) %>%
+  select(country, life_expectancy)
+gapminder16_50
+```
+
+
+### Barplots
+
+A **barplot** provides a visualization of this table.  In examining the bar chart, keep your eyes on **variability** (how are cases spread among the categories?) and **take-home message**.  Try the code below that builds up from a simple to a customized bar chart.  At each step determine how each piece of code contributes to the plot.  
+
+To get a better sense of the data, let's look at how many countries fell into each of the `region` levels in 1994:
+
+```{r, fig.height=2.5, fig.width=3.75}
+# set up a plotting frame
+ggplot(gapminder94, aes(x=region))
+
+# add a layer with the bars
+ggplot(gapminder94, aes(x=region)) +
+    geom_bar()
+
+# change the color of the bars
+ggplot(gapminder94, aes(x=region)) +
+    geom_bar(fill="dodgerblue")
+
+# add axis labels and title
+ggplot(gapminder94, aes(x=region)) +
+    geom_bar(fill="dodgerblue") +
+    labs(x="Region", y="Number of countries", title="Number of countries by region")
+```
+
+```{r, fig.height=3.5, fig.width=3.75}
+# change text orientation
+ggplot(gapminder94, aes(x=region)) +
+    geom_bar(fill="dodgerblue") +
+    labs(x="Region", y="Number of countries", title="Number of countries by region") + 
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+
+# reorder the x-axis in descending order, instead of alphabetical
+library(forcats)
+ggplot(gapminder94, aes(x=fct_infreq(region))) +
+    geom_bar(fill="dodgerblue") +
+    labs(x="Region", y="Number of countries", title="Number of countries by region") + 
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
+
+
+   
+
+## Univariate visualization for quantitative variables
+
+> **Research question:**
+>
+> What is the range of life expectancies across countries in different years? What are typical life expectancies? Are life expectancies quite variable across countries?
+
+> As you visualize quantitative variables, keep in mind:
+>
+> - **Center**: Where is the center of the distribution? What is a typical value of the variable?
+> - **Variability**: How spread out are the values? A lot or a little?
+> - **Shape**: How are values distributed along the observed range? Is the distribution symmetric, right-skewed, left-skewed, bimodal, or uniform (flat)?
+> - **Outliers**: Are there any outliers, i.e. values that are unusually large/small relative to the bulk of other values?
+> - **Context**: In the context of your research, what do you learn from the plot or table? How would you describe your findings to a broad audience?
+
+```{r,echo=FALSE}
+knitr::include_graphics("https://www.macalester.edu/~dshuman1/data/155/skew_figure.png")
+```
+
+### Histograms
+
+Histograms are constructed by (1) dividing up the observed range of the variable into "bins" of equal width and (2) counting up the number of cases that fall into each bin. Examine the code below, and at each step, determine how each piece of code contributes to the plot.
+
+```{r, fig.height=2.5, fig.width=3.75, message=FALSE,warning=FALSE}
+## Create an object that filters to only the year 1980
+gm_1980 <- gapminder %>%
+    filter(year==1980)
+
+## Plot 1
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy))
+
+## Plot 2
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_histogram() +
+    xlab("Life expectancy") +
+    ylab("Number of countries") +
+    ggtitle("Distribution of life expectancies in 1980")
+
+## Plot 4
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_histogram(fill = "firebrick") +
+    xlab("Life expectancy") +
+    ylab("Number of countries") +
+    ggtitle("Distribution of life expectancies in 1980")
+```
+
+
+### Impact of bin width
+
+The following histograms use different bin widths for visualizing the same data. 
+```{r fig.height=2.5, fig.width=3.75}
+## Plot 1
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_histogram(binwidth = .2) +
+    xlab("Life expectancy") +
+    ylab("Number of countries") +
+    ggtitle("Distribution of life expectancies in 1980")
+
+## Plot 2
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_histogram(binwidth = 1) +
+    xlab("Life expectancy") +
+    ylab("Number of countries") +
+    ggtitle("Distribution of life expectancies in 1980")
+
+## Plot 3
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_histogram(binwidth = 5) +
+    xlab("Life expectancy") +
+    ylab("Number of countries") +
+    ggtitle("Distribution of life expectancies in 1980")
+
+## Plot 4
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_histogram(binwidth = 20) +
+    xlab("Life expectancy") +
+    ylab("Number of countries") +
+    ggtitle("Distribution of life expectancies in 1980")
+```
+
+\
+
+```{exercise,name="Histogram bin width"}
+Summarize the information provided by the tallest bar in the histogram plots. Further, use these histograms to summarize the trade-offs in using small vs. large bins.
+```
+
+\
+**The mode lies around 70 years old in 1980. This is easiest to interpret in the second and third histograms, too small of bins doesn't draw the eye towards patterns as quickly, while too large of bins loses information.**
+
+### Density plots
+
+A density plot is essentially a smooth version of the histogram. Instead of sorting cases into discrete bins, the "density" of cases is calculated across the entire range of values. The greater the number of cases, the greater the density! The density is then scaled so that the area under the density curve **always equals 1**, and the area under any region of the curve represents the fraction of cases that lie in that range.
+
+The following code looks at the distribution of life expectancies in 1980. 
+
+```{r, fig.height=2.5, fig.width=3.75}
+gm_1980 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_density(fill="maroon",alpha=.75)+
+  labs(x="Life expectancy") +
+  xlim(c(20,90))
+
+gm_2010 <- gapminder %>%
+    filter(year==2010)
+
+gm_2010 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_density(fill="maroon",alpha=.75)+
+  labs(x="Life expectancy") +
+  xlim(c(20,90))
+```
+
+\
+
+```{exercise, name="Comparison of density plots"}
+   
+a. What is the shape of the density plot above for life expectancies in 1980 (e.g., symmetric, left-skewed, right-skewed, bimodal)?   
+b. Make another density plot for the life expectancies in 2010.   
+c. What would you remark about the differences between the life expectancy density plots for the two years (1980 and 2010)? Think back to center, variability, shape, outliers, and scientific context.      
+
+```
+
+\
+**a.** the shape is left-skewed  
+**b.**
+```{r, fig.height=2.5, fig.width=3.75}
+gm_2010 <- gapminder %>%
+    filter(year==2010)
+
+gm_2010 %>%
+    ggplot(aes(x=life_expectancy)) +
+    geom_density(fill="maroon",alpha=.75)+
+  labs(x="Life expectancy")
+```
+**c.** the density shifted towards higher life expectancies, towards the right, in 2010 compared to 1980.
+
+
+### Numerical measures of center and spread
+
+Numerical measures of the center and spread can help us better understand histograms and density plots. The following code computes the mean, median, and standard deviation (SD) of life expectancies in the years 1980 and 2010.
+
+```{r}
+gapminder %>%
+    filter(year==1980) %>%
+    summarize(
+        mean_life_exp = mean(life_expectancy),
+        median_life_exp = median(life_expectancy),
+        sd_life_exp = sd(life_expectancy)
+    )
+
+gapminder %>%
+    filter(year==2010) %>%
+    summarize(
+        mean_life_exp = mean(life_expectancy),
+        median_life_exp = median(life_expectancy),
+        sd_life_exp = sd(life_expectancy)
+    )
+```
+
+\
+
+```{exercise, name="Numerical summaries of center and spread"}
+   
+a. How do the numbers compare between the years? How do they relate to visual aspects of the density plots?   
+b. Which is higher: the mean or the median? How does this relate to the shape of the densities?
+
+```
+
+\
+**a.** The mean and median increased as time progressed, while the deviation from the median shrunk. The smaller standard deviation in 2010 proves more centralized data.  
+**b.** Mean is less than the median which proves a left-skew in the data.  
+
+### Box plots
+
+Another method to visualize the shape of a distribution of a quantitative variable is the box plot. Here is an example box plot for the life expectancies in 2010:
+
+```{r, fig.height=2.5, fig.width=3.75}
+gapminder10<-gapminder %>%
+    filter(year==2010)
+ggplot(gapminder10,aes(x="",y=life_expectancy)) +
+    geom_boxplot(alpha=.6)
+```
+
+The horizontal line in the middle of the box is the **median** life expectancy. The bottom and top of the box are the 25th and 75th percentile of the distribution. We can double check these values:
+
+```{r}
+summary(gapminder10$life_expectancy)
+```
+
+Note that the max is 82.84. Remember that this is the distribution of countries' average life expectancies, not the lengths of individual people's lives.
+
+The two vertical lines extend to the largest/smallest values no more than 1.5 times the inter-quartile range (IQR) from the top/bottom edges of the box. The IQR is the difference between the 75th and 25th percentiles (77.2-65.2=12 in this case). So, in this example, the bottom line goes down to 65.2-12*1.5=47.2. The top line would go up to 77.2+12*1.5=95.2; however, the maximum value is at 82.84, so it stops there. Any points outside of the ends of these vertical lines (called the whiskers) are shown as **outliers**.
+
+## Reflection
+
+After completing the above exercises, you should recognize some `ggplot()` patterns!
+
+> `ggplot()`, short for "grammar of graphics" plot, is a powerful function.  We'll focus on the *patterns* of this function over the memorization of its syntax.  For example, all of our `ggplot()` code had the following patterns:
+> 
+> - Line 1 of the code specified the name of our data and the variable of interest within that data: `ggplot(MY DATA, aes(x = VARIABLE ON X AXIS))` where `aes` is short for `aesthetics`.    
+> - Except for the last line of the plot code, lines end with `+`.  This tells RStudio that we're not done with the plot code yet.    
+> - The second row of the code indicates what kind of plot we want to make.  Thus far, we've seen `geom_bar()`, `geom_histogram()`, `geom_density()`.    
+> - We can change the x-axis and y-axis labels using `labs(x = "MY X LABEL", y = "MY Y LABEL")`    
+
+
+## More univariate visualization practice
+
+\
+
+```{exercise,name="Plotting practice"}
+       
+a. Pick another categorical variable in the `gapminder` dataset (or create your own from a quantitative variable using the `cut` function) and create a barplot for the year 2000. Summarize your findings *in a contextually meaningful way*.   
+b. Pick a new *quantitative* variable from the data set.   
+- Construct a histogram. Play around with the bin width, color, etc.   
+- No class will teach you everything you need to know. Thus, being able to find help online is an important skill. To this end, do a Google search to learn how to add two vertical lines to your histogram: one representing the mean and the other representing the median of the variable. Use two different colors.   
+- Construct a density plot. Play around with the color and transparency.   
+- Construct a box plot. Are there outliers?
+
+```
+
+
+\
+**a.** The mode lies within 1 and 2 children. The data are right-skewed, meaning many countries' fertility rates are above this mode.
+```{r}
+gapminder %>%
+  filter(year==2000) %>%
+  select(country, fertility) %>% 
+  mutate(fertility_cat = cut(fertility, c(0,1,2,3,4,5,6,7,Inf))) -> gapminder2000
+
+ggplot(gapminder2000, aes(x=fertility_cat)) +
+  geom_bar(fill = "dodgerblue")
+```
+**b.**
+```{r}
+gapminder %>%
+  filter(year==2000) %>%
+  select(country, gdp) -> gapminder2000_gdp
+
+ggplot(gapminder2000_gdp, aes(x=gdp)) +
+  geom_histogram(binwidth = 100000000000, fill = "purple") +
+  geom_vline(aes(xintercept = mean(gapminder2000_gdp$gdp)), color = "red") +
+  geom_vline(aes(xintercept = median(gapminder2000_gdp$gdp)), color = "blue")
+
+summary(gapminder2000_gdp$gdp)
+```
+```{r}
+ggplot(gapminder2000_gdp, aes(x=gdp)) +
+    geom_density(fill="maroon",alpha=.8)+
+    ggtitle("2000 GDP")
+```
+```{r}
+ggplot(gapminder2000_gdp, aes(x = "", y = gdp)) +
+  geom_boxplot()
+```
+**Looking at GDP through a boxplot, we can identify that there are many outliers. The skew is heavy.**
+
+```{exercise, name="Looking ahead"}
+So far, we have learned how to construct and interpret *uni*variate visualizations. In doing so, we observed that the values of variables vary from case to case (hence the term "variable"). Some of this variability might be explained by other variables in the data. For example, we might ask: How, if at all, is life expectancy related to population, GDP, etc.?   
+  
+a. In the form of a research question, indicate other relationships of interest among two of the variables in the `gapminder` data set.   
+b. How might you visualize these relationships?   
+c. Check out the `ggplot2` cheat sheet linked above. What other kinds of plots might you make?
+
+```
+
+\
+**a.** How might fertility relate to infant mortality? Does a higher infant mortality rate cause higher fertility?  
+\
+**b.** We could check the relationship by putting fertility on the x-axis as the independent variable, and infant mortality on the y-axis as the dependent variable, then create a density plot or histogram etc.  
+**c.** It would be interesting to combine a geom_map with a geom_raster to see a 'heat map' of places with high correlation of fertility and infant mortality versus low correlations.
+
+# Visualizing Relationships Between Variables
+
+So far, we have looked at univariate patterns in life expectancies for countries over the years. Here are four different types of plots we examined:
+
+```{r,echo=FALSE}
+gapminder<-gapminder %>%
+    mutate(life_exp_cat = cut(life_expectancy, c(0,50,70,Inf))) 
+gapminder94 <- gapminder %>%
+  filter(year==1994)
+```
+
+```{r eval=FALSE}
+gapminder94%>%
+    ggplot(aes(x = life_exp_cat)) +
+    geom_bar()
+gapminder94 %>%
+    ggplot(aes(x = life_expectancy)) +
+    geom_histogram(fill = "dodgerblue")
+gapminder94 %>%
+    ggplot(aes(x = life_expectancy)) +
+    geom_density()
+gapminder94%>%
+    ggplot(aes(x = "",y=life_expectancy)) +
+    geom_boxplot()
+```
+
+```{r echo=FALSE, fig.align="center"}
+p1 <- gapminder94 %>%
+    ggplot(aes(x = life_exp_cat)) +
+    geom_bar()
+p2 <- gapminder94 %>%
+    ggplot(aes(x = life_expectancy)) +
+    geom_histogram(fill = "dodgerblue")
+p3 <- gapminder94 %>%
+    ggplot(aes(x = life_expectancy)) +
+    geom_density()
+p4 <- gapminder94 %>%
+    ggplot(aes(x = "",y=life_expectancy)) +
+    geom_boxplot()
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+\
+\
+
+We also looked at the distribution of life expectancies in different years:
+
+```{r echo=FALSE, fig.width=4,fig.align="center"}
+## Life expectancy distributions in different years
+p1<-gapminder %>%
+    filter(year==1960)%>%
+    ggplot(aes(x = life_expectancy)) +
+    xlim(c(0,90))+
+    geom_density(fill="maroon",alpha=.8)+
+    ggtitle("1960")
+p2<-gapminder %>%
+    filter(year==1994)%>%
+    ggplot(aes(x = life_expectancy)) +
+    xlim(c(0,90))+
+    geom_density(fill="maroon",alpha=.8)+
+    ggtitle("1994")
+p3<-gapminder %>%
+    filter(year==2016)%>%
+    ggplot(aes(x = life_expectancy)) +
+    xlim(c(0,90))+
+    geom_density(fill="maroon",alpha=.8)+
+    ggtitle("2016")
+grid.arrange(p1, p2, p3, ncol = 1)
+```
+
+We have a sense that life expectancies vary between countries and over time, but we haven't gone much deeper. *Why* do they differ? What other variables might explain some of the variability in life expectancies across countries and across time? Which variables do you think might be the best predictors? The worst?  
+**Wars, pandemics, and other catastrophic events would be interesting to note as the years progress to give us a sense of why life expectancy may shrink. On the opposite side of that coin, also noting when medical discoveries occur would give us context to rising life expectancies. Things like GDP and activity are good predictors while weather and fertility rate are less appropriate predictors.**
+
+> **Visualizing Relationships**
+>
+> We're interested in the relationship between:
+>
+> - **Response/outcome variable**: the variable whose variability we would like to explain (life expectancy)
+> - **Predictors/covariates**: variables that might explain some of the variability in the response (population, geographic location, income, fertility rates, etc.)
+> 
+> Our goal is to construct visualizations that allow us to examine/identify the following features of the relationships among these variables:
+> 
+> - Relationship *trends*    
+> - Relationship *strength* (degree of variability from the trend)    
+> - *Outliers* in the relationship
+
+## Visualizing relationships between two variables
+
+What *visual features* are we looking for when we aim to visualize *relationships*? As with univariate graphics, the appropriate visualization depends on whether the variables are quantitative or categorical.
+
+\
+
+```{exercise,name="Plan first"}
+ Look at the data excerpt below and write some notes for the questions below.
+
+```
+
+```{r echo=FALSE}
+    tab <- gapminder %>%
+        filter(year %in% c(1980,2000), country %in% c("Nicaragua", "Canada", "United States", "Suriname")) %>%
+        select(country, region, life_expectancy, fertility, year) %>%
+        arrange(year)
+    knitr::kable(tab)
+```
+
+\noindent a. How might we visualize the relationship between `life_expectancy` (the response) and `fertility` (the predictor)?   
+**With a density plot where fertility is on the x-axis and life_expectancy is on the y-axis.**  
+b. How might we visualize the relationship between `life_expectancy` (the response) and `region` (the predictor)? Think about how we might change the histogram or density plot above to distinguish between continental regions.   
+**With a histogram where each column is a region, and its corresponding y value is life_expectancy**  
+c. How might we visualize the relationship between `region` (the response) and `year` (the predictor)? (e.g. We might want to look at the distribution of continental regions that meet certain critera in different years.) Think about how we might change the barplot above to distinguish between continental regions.  
+**Coloring by region would visually distinguish them, with year on the x-axis and what we're interested in comparing on the y-axis.**  
+\
+
+
+> **Basic Rules for Constructing Visualizations**
+>
+> Instead of memorizing which plot is appropriate for which situation, it's best to simply recognize patterns in constructing graphics:
+>
+> - Each quantitative variable requires a new axis.  (We'll discuss later what to do when we run out of axes!)    
+>
+> - Each categorical variable requires a new way to "group" the graphic (eg: using colors, shapes, separate facets, etc to capture the grouping)    
+> 
+> - For visualizations in which overlap in glyphs or plots obscures the patterns, try faceting or transparency. 
+
+\
+
+
+
+
+> **Interpreting Visualizations**
+>
+> In examining plots of a relationship between a response and one or more explanatory variables, keep your eye on the following features:    
+> 
+> - **trend**    
+>    What's the general "shape" of the relationship?  Is the reponse positively/negatively associated with the explanatory variable(s)?  Is the relationship linear/curved?
+>
+> - **variability / strength**    
+>    How strong is the relationship?  Is there a lot of or a little variability around the trend?  That is, to what degree is the variability in the response explained by the explanatory variable(s)?
+>
+> - **outliers**    
+>    Are there any unusual cases that don't follow the general trend of the relationship?
+
+
+
+### Quantitative vs. quantitative
+
+In 1960, what was the relationship between life expectancy and fertility, two quantitative variables? Let's make scatterplots of `life_expectancy` versus `fertility` using different glyphs: points or text.
+
+```{r}
+gapminder60<-gapminder%>%
+  filter(year==1960)
+
+## Plot with "point" glyphs
+p1<-gapminder60 %>%
+    ggplot(aes(x = fertility, y = life_expectancy)) + 
+    geom_point()
+
+## Plot with symbol glyphs
+p2<-gapminder60 %>%
+    ggplot(aes(x = fertility, y = life_expectancy)) + 
+    geom_point(shape=3)
+
+## Plot with "text" glyphs
+p3<-gapminder60 %>%
+    ggplot(aes(x = fertility, y = life_expectancy)) + 
+    geom_text(aes(label=country))
+
+## Plot with point and "text" glyphs
+p4<-gapminder60 %>%
+    ggplot(aes(x = fertility, y = life_expectancy)) + 
+    geom_text(aes(label=country)) +
+    geom_point()
+
+# arrange in a 2x2 grid
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+\
+
+```{exercise,name="Interpreting scatterplots"}
+       
+a. Summarize the relationship between life expectancy and fertility in 1960. Be sure to comment on:   
+  - the shape of the relationship (line/curve/other)   
+- the strength of the relationship (weak/moderate/strong)   
+- the direction of the relationship (positive/negative)   
+- outliers (What countries deviate from the global trend? Why might this be the case?)   
+b. Is this what you had expected? 
+  
+```
+
+\
+**a.** There is a curve that begins with a negative correlation, then loops around to be positive/uncorrelated as fertility increases and life expectancy decreases. The relationship is moderately strong between fertility rates of 0-6, then a weak correlation for high fertility rates. China is an outlier with both low fertility and life-expectancy, this may be due to feritlity laws/norms they had in place at the time.  
+**b.** I expected a more linear relationship than is shown, I'm curious how this plot changes over time.  
+
+**Correlation coefficient**
+
+We can capture the strength of the *linear* relationship between two quantitative variables with the **correlation coefficient**.
+
+The following code plots life expectancy versus infant mortality in different years.
+```{r,fig.height=3,fig.width=10}
+years <- c(1960, 1980, 2000, 2015)
+gapminder %>%
+    filter(year %in% years) %>%
+    ggplot(aes(x = infant_mortality, y = life_expectancy, color = factor(year))) + 
+    geom_point() +
+    facet_grid(~ year)+
+    labs(color="Year")
+```
+
+\
+
+```{exercise,name="Correlation coefficient"}
+      
+a. What would you predict about the relative ordering of the correlation coefficient magnitudes for the 4 years?   
+b. Run the code below to compute the correlation coefficients between life expectancy and infant mortality in the 4 years. (Note: the `use = "complete.obs"` is used to remove any missing values from the calculation.)
+
+```
+**a.** The correlation seems to increase in magnitude (gets a more and more negative slope) as the years increase.  
+
+```{r}
+gapminder %>%
+    filter(year %in% years) %>%
+    group_by(year) %>%
+    summarize(corr = cor(infant_mortality, life_expectancy, use = "complete.obs"))
+```
+
+\noindent c. Run the code below to remove the lowest life expectancy outlier for 1980. Use similar code to do the same for 2000. Also try filtering out a few points that don't look like extreme outliers. Based on these investigations, which points contribute most to the correlation coefficient?
+
+```{r}
+gapminder %>%
+    filter(year==1980, life_expectancy > 40) %>% ## NOTE: the comma in filter() means AND
+    summarize(corr = cor(infant_mortality, life_expectancy, use = "complete.obs"))
+
+gapminder %>%
+    filter(year==2000, life_expectancy > 50) %>% ## NOTE: the comma in filter() means AND
+    summarize(corr = cor(infant_mortality, life_expectancy, use = "complete.obs"))
+
+gapminder %>%
+    filter(year==2000, life_expectancy > 65, life_expectancy < 70) %>% ## NOTE: the comma in filter() means AND
+    summarize(corr = cor(infant_mortality, life_expectancy, use = "complete.obs"))
+```
+<!-- Emphasize the **linear** part of correlation. -->
+
+\
+**As outliers are removed, the data become more linear thus the correlation is greater. If non-outliers are removed, the data is weighted more towards the outliers and thus loses correlation.**  
+
+
+**Line graphs**
+
+So far we've focused on looking at distributions and relationships in the `gapminder` data in particular years. It is useful to get a sense for trajectories of the variables over time as well. 
+
+```{exercise, name="Line graphs"}
+   
+a. Complete and activate the following code to make a line graph of life expectancy versus time in Lithuania:
+
+```
+
+```{r}
+gapminder %>%
+    filter(country == "Lithuania") %>%
+    ggplot(aes(x = year, y = life_expectancy)) + 
+    geom_line()
+```
+   
+\noindent b. The line graph doesn't show the individual data points, so it is not immediately clear how much information is being conveyed (how many data points). Adding points to a line graph can be helpful in this regard. Try to add points to the line graph you made above.
+
+\
+```{r}
+gapminder %>%
+    filter(country == "Lithuania") %>%
+    ggplot(aes(x = year, y = life_expectancy)) + 
+    geom_line() +
+    geom_point()
+```
+
+### Quantitative vs. categorical
+
+Year can be viewed as a quantitative variable if we look at data over many years, but it can also be viewed as a categorical variable when looking at a subset of the data spanning only a few years. Here let's treat `year` as a categorical variable by focusing on comparisons between the years 1960 and 2000. We'll look at the relationship between `year` and `life_expectancy`. Work through the several options below to how the different `ggplot` options work.
+
+
+```{r, fig.height=3,fig.width=14}
+p1<-gapminder %>%
+    filter(year %in% c(1960,2000)) %>%
+    ggplot(aes(x = life_expectancy, color = factor(year))) +
+    geom_density()+
+    labs(color="Year")
+
+p2<-gapminder %>%
+    filter(year %in% c(1960,2000)) %>%
+    ggplot(aes(x = life_expectancy, fill = factor(year))) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(values = c("deepskyblue", "darkorange"))+
+    labs(fill="Year")
+
+p3<-gapminder %>%
+    filter(year %in% c(1960,2000)) %>%
+    ggplot(aes(x = life_expectancy, fill = factor(year))) +
+    geom_density() +
+    facet_grid(~year)+
+    labs(fill="Year")
+
+grid.arrange(p1, p2, p3, ncol = 3)
+```
+
+\
+
+```{exercise, name="Density plot variations"}
+   
+a. As you look at each plot, try to formulate precisely: what aspects of the life expectancy distributions are you trying to compare between the two years?   
+  b. What do the `fill`, `color`, `alpha`, and `facet_grid` options do?   
+  c. Which plot do you like the best? Which plot do you find the most effective? Why?   
+  d. Try using just `fill = year` in one of the plots above. Can you guess what the `factor()` function is doing?   
+  e. **Interpretation!** Interpret the differences you see in the life expectancy distributions in *a contextually meaningful way*.
+```
+
+<!-- guides(fill=guide_legend(title="New Legend Title")) to change legend title -->
+
+\
+**a.** We are comparing the shape, specifically, the skew and any nodes that appear.  
+**b.** Fill fills the space under the line, color colors only the line, alpha determines the transparency of the attribute, and facet_grid displays the graphs next to each other.  
+**c.** The middle graph, where the years are overlapping with an alpha, is easiest to interpret as both years exist on the same axes and the coloring differentiates between the two well.  
+**d.** The factor function is effectively saying "for each".  
+**e.** While life expectancy was bi-modal in 1960 (most countries' life-expectencies were around 45 of 65), it became left-skewed over time as world life-expectancy has been on the rise, the mode now being around 75.  
+\
+
+Other options for showing the relationships between quantitative and categorical variables include boxplots and violin plots.  The following code constructs side-by-side boxplots and violin plots.
+
+```{r, fig.height=3,fig.width=5,fig.show='hold'}
+gapminder %>%
+    filter(year %in% c(1960,2000)) %>%
+    ggplot(aes(x = factor(year), y = life_expectancy)) +
+    geom_boxplot()+
+    labs(x="Year")
+
+gapminder %>%
+    filter(year %in% c(1960,2000)) %>%
+    ggplot(aes(x = factor(year), y = life_expectancy)) +
+    geom_violin()+
+    labs(x="Year")
+```
+
+\
+
+```{exercise, name="Boxplots and violin plots"}
+     
+a.  What features of the life expectancy distributions are emphasized by these two plots? What comparisons are facilitated?     
+b. In the future, we'll typically use *density plots* instead of histograms, violins, and boxes. Explain at least one pro and one con of the density plot.
+
+```
+      
+\
+**a.** Boxplots emphasize the median and IQR range. Violin plots emphasize the shape of the distribution: the skew, any modes. Thus these features are easily compared when two plots are given.  
+**b.** Density plots are useful in visualizing the spread of data, they are limited in that we lose the individual data points as they are summarised.  
+
+### Categorical vs. categorical
+
+While so far, we have used the life expectancy variable `life_expectancy` as our response variable, we could also use `life_exp_cat`, the categorical (bucketed) version we created with the function `cut`, in combination with the categorical variable `region`.  
+
+> **Research question:**
+>
+> In 1960, in what geographic locations did more countries have low life expectancies?
+
+What is a "low" life expectancy? Our chosen threshold will depend on our specific scientific interests, but let's stick with our `life_exp_cat` variable and examine "low" life expectancies as being less than or equal to 50 years.
+
+
+```{r,fig.width=10}
+## Stacked barplot
+gapminder60 %>%
+    ggplot(aes(x = region, fill = life_exp_cat)) +
+    geom_bar() +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+## Dodged barplot
+gapminder60 %>%
+    ggplot(aes(x = region, fill = life_exp_cat)) +
+    geom_bar(position = "dodge") +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+## Proportional barplot
+gapminder60 %>%
+    ggplot(aes(x = region, fill = life_exp_cat)) +
+    geom_bar(position = "fill") +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+## Faceted barplot
+gapminder60 %>%
+    ggplot(aes(x = region,fill=life_exp_cat)) +
+    geom_bar() +
+    facet_wrap(~ life_exp_cat) +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1))
+```
+
+```{exercise,  name="Barplot variants"}
+   
+a. Name one pro and one con of using the "proportional bar plot".   
+b. Which barplot from part (a) do you like the best? Why?   
+  c. **Interpretation!** Interpret the patterns you see in your favorite barplot *in a contextually meaningful way*.
+
+```
+
+\
+**a.** It's helpful for displaying percentages within each region but we lose the ability to compare quantity across regions.  
+**b.** That said, I like the porportional bar plot for this data as I am more interested in the percentages across regions than the 'count' of how many countries are in each region.  
+**c.** Certain regions, like Australia and New Zealand, Central Asia, and Middle Africa, are entirely in one life expectancy category, telling us the countries in that region are similar in life expectancy and thus likely have other developmental similarities. It would be helpful to have ordered the countries by median life expectancy.
+
+## More practice
+
+\
+
+```{exercise}
+Complete the following steps to make a visualization that compares the distribution of a quantitative variable (your choice) across several years (your choice also, but choose at least 4 years).   
+
+\noindent a. Filter the `gapminder` data frame to only include data from your selected years. Hint: if you have a discrete list of years such as 1960, 1980, 2000, you can use `year %in% c(1960,1980,2000)` as your condition.   
+b. Make a graphic with the density of the variable for each of the years laid on top of each other.  
+c. Make a graphic with facets such that each facet has the density plot of the variable for one year.   
+d. In these two plots, what are the variables you are examining, and are they categorical or quantitative?    
+e. Interpret your visualizations *in a contextually meaningful way*.
+
+```
+
+\
+**a.**
+```{r}
+gapminder %>%
+  filter(year %in% c(1960, 1980, 2000, 2015), region == "South America") %>%
+  select(year, population) -> gap_pop
+```
+**b.**  
+```{r}
+ggplot(gap_pop, aes(x = population, fill = factor(year))) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(values = c("purple", "blue", "turquoise", "green")) +
+    labs(fill="Year")
+```
+**c.**
+```{r}
+ggplot(gap_pop, aes(x = population, fill = factor(year))) +
+    geom_density() +
+    facet_grid(~year)+
+    scale_fill_manual(values = c("purple", "blue", "turquoise", "green")) +
+    labs(fill="Year")
+```
+**d.** We are examining the quantitative variable— population, across the categorical variables— four distinct years.  
+**e.** In the region of South America, the populations in each country were very similar as the span in 1960 was short. However, as the years progress, this span widens as some countries' populations climb ahead of the others. There are consistent outliers from the mode of the data, which is likely due to a few more populated countries.
+
+```{exercise}
+   
+a. Pick a fixed year, and make a graphic comparing `fertility` (predictor/explanatory variable) to `infant_mortality` (response variable) in that year.   
+b. Interpret your visualization *in a contextually meaningful way*.
+
+```
+
+\
+**a.**
+```{r}
+gapminder %>%
+  filter(year == "2015") %>%
+  ggplot(aes(x = fertility, y = infant_mortality, color = region)) +
+  geom_point(alpha = .4)
+```
+**b.** There exists a positive, moderate correlation between fertility and infant mortality. As fertility increases, there is a higher rate of infant mortality; or, more likely, as infant mortality increases, women are likely to have more children.
+
+
+
+
+
+
+

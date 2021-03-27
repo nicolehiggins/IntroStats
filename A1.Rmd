@@ -1,0 +1,32 @@
+---
+title: "A2"
+author: "Nicole Higgins"
+date: "3/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(fivethirtyeight)
+library(tidyverse)
+```
+
+# Practice!
+```{r}
+Prison <- read_csv("https://www.macalester.edu/~ajohns24/data/WorldIncarceration.csv")
+dim(Prison)
+head(Prison)
+names(Prison)
+class(Prison$Continent)
+class(Prison$IncarcerationRate)
+class(Prison$Country)
+
+var(Prison$IncarcerationRate)
+sd(Prison$IncarcerationRate)
+(US <- filter(Prison, Country == "United States"))
+table(Prison$Continent)
+(PrisonAsia <- filter(Prison, Continent == "Asia"))
+summary(PrisonAsia$IncarcerationRate)
+summary(Prison$IncarcerationRate)
+```
+
