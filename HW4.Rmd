@@ -1,0 +1,253 @@
+---
+title: "Introduction to Statistical Modeling    <br> Homework 4"
+author: "Nicole Higgins"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+
+# Logistic Regression 
+
+In 1986, NASA's Challenger shuttle exploded 73 seconds after liftoff, killing all 7 crew members on board. An investigation found that an "o-ring" failure was the cause. At the time, NASA used six o-rings (seals) in each shuttle to prevent hot gases from coming into contact with fuel supply lines.  
+
+```{r,echo=FALSE,out.width=800}
+knitr::include_graphics("https://www.macalester.edu/~dshuman1/data/155/challenger.jpg")
+```
+
+
+The temperature on the day of the Challenger launch was a chilly 31^o^ F, much colder than the launch temperatures of all previous NASA flights which ranged from 53 to 81^o^ F.  Prior to lift-off, engineers warned of potential o-ring failure under such low temperatures.  However, upon analyzing data on the temperature and o-ring performance from the 23 previous flights, NASA thought it was safe to go forward.  Here's the data:
+
+```{r echo=FALSE}
+oring <- read_csv("http://www.macalester.edu/~ajohns24/data/NASA.csv")
+knitr::kable(oring[1:10,],caption="First ten rows of the o-ring performance data.")
+```
+
+Each case in the data set represents a single o-ring for one of the 23 flights. Thus, there are 6*23=138 cases in total.  The variables include:
+
+Variable        Description
+--------------- ---------------------------------------------
+Broken          whether the o-ring broke (1 = yes, 0 = no)
+Temp            temperature of the flight
+
+<br>
+
+Our goal is to determine whether these data provide evidence that NASA should not have launched the Challenger on this chilly day in 1986.  To begin, check out the relationship between `Broken` and `Temp`:
+
+
+```{r fig.align='center', fig.width=6, fig.height=2.5,echo=FALSE}
+ggplot(oring, aes(x=Temp, fill=as.factor(Broken))) + 
+  geom_density(alpha=0.5)+
+  labs(fill="Broken?")
+  
+```
+
+```{exercise}
+   
+a. Make a linear model of `Broken` by `Temp`.  
+b. Examine the coefficients and the a make of plot of the data along with the regression line.   
+c. Explain why this model isn't an appropriate summary of the relationship between these two variables.   
+
+```
+**a.**
+```{r}
+mod1 <- lm(data = oring, Temp ~ 1 + Broken)
+```
+**b.**
+```{r}
+mod1$coefficients
+
+oring %>%
+  ggplot(aes(x = Temp, y = Broken)) +
+  geom_point() +
+  geom_abline(intercept = 69.97, slope = -6.19)
+```
+**c.** Since the Broken variable is a binomial categorical variable, we can't easily interpret the meaning of a best fit line, as the y will always be either 0 or 1.
+
+```{exercise, name="Logistic regression model"}  
+   
+a. Construct the logistic regression model of `Broken` by `Temp` and write down the model formula.  This should be of the form `log(odds) = a + b Temp`. Note the new syntax. For logistic regression, we use `glm` instead of `lm` and specify `family="binomial"`.  
+b. Use `ggplot` to make a plot of your data along with the regression line from part (a). Make sure to label your y-axis with "Probability of breaking".   
+c. Add a `fullrange=TRUE` to your geom_smooth arguments, and  an extra line that reads  `+ lims(x=c(0,100))` to your ggplot to zoom out on the temperature axis.
+
+```
+**a.** 
+```{r}
+mod2 <- glm(data = oring, family = "binomial", Broken == 1 ~ Temp)
+```
+**b. and c.** 
+```{r}
+oring %>%
+  ggplot(aes(x = Temp, y = Broken)) +
+  geom_point() +
+  geom_smooth(method = "glm", se=FALSE, method.args = list(family="binomial"), fullrange=TRUE) + 
+  lims(x=c(0,100)) +
+  labs(y = "Probability of Breaking")
+```
+
+
+
+
+```{exercise}
+Working on the log scale isn't easy.  To this end, show that the following three models on the `log(odds)`, `odds` and `probability` of breakage scales are all equivalent.  (If you get stuck here, move on and simply note that we can rewrite the log(odds) model in terms of odds or probability!)    
+
+```
+
+$$
+\begin{split}
+\text{log(odds)} & = 5.085 - 0.1156\text{Temp} \\
+\text{odds} & = e^{5.085 - 0.1156\text{Temp}} \\
+p & = \frac{e^{5.085 - 0.1156\text{Temp}}}{e^{5.085 - 0.1156\text{Temp}} + 1} \\
+\end{split}
+$$
+
+
+We now have the *same* model of o-ring breakage by temperature, but on three different scales. In addition to the probability plot above, we can plot log(odds) and odds of the model:     
+```{r,echo=FALSE,fig.width=6,fig.height=3}
+oring_mod <- glm(Broken ~ Temp, data=oring, family="binomial")
+
+#calculate predictions on log(odds) scale    
+log_pred <- predict(oring_mod,oring) 
+
+#calculate predictions on odds scale
+odds_pred <- exp(log_pred)
+
+#calculate predictions on probability scale    
+prob_pred <- predict(oring_mod,oring, type="response")
+
+#include the 3 sets of predictions in the data    
+oring <- oring %>% 
+    mutate(log_pred,odds_pred,prob_pred)
+
+ggplot(oring, aes(x=Temp, y=log_pred)) + 
+    geom_smooth(se=FALSE) + 
+    labs(y="log(odds of breaking)")
+
+ggplot(oring, aes(x=Temp, y=odds_pred)) + 
+    geom_smooth(se=FALSE) + 
+    labs(y="odds of breaking")
+
+```
+
+
+```{exercise}
+   
+Compare the *shapes* of the models on these different scales.    
+a. Which model is linear?    
+b. Which model is s-shaped?    
+c. Which model is restricted between 0 and 1 on the y-axis?    
+d. Which model is curved and restricted to be above 0 (but not necessarily below 1) on the y-axis?    
+    
+```
+
+**a.** log(odds) 
+**b.** probability  
+**c.** probability  
+**d.** odds  
+\
+
+```{exercise}
+
+Combining your observations of these plots, which of the following best describes the relationship between o-ring breakage potential and temperature?    
+i. The colder the temp, the more likely an o-ring is to fail.    
+ii. The hotter the temp, the more likely an o-ring is to fail.    
+iii. There's no relationship between temp and o-ring failure.    
+
+```
+**i**
+
+```{exercise}
+Let's use the model to make predictions.  Consider the warmest launch day of 81$^\text{o}$ F.    
+a. Predict the *log(odds)* that an o-ring would fail.  HINT: use the log(odds) model.    
+b. Predict the *odds* that an o-ring would fail. HINT: Either transform the log(odds) prediction or use the odds model.     
+c. Predict the *probability* that an o-ring would fail. HINT: Either transform the odds prediction or use the probability model.    
+
+```
+
+**a.** 
+```{r}
+predict(oring_mod, data.frame(Temp = 81)) 
+```
+**b.**
+```{r}
+exp(predict(oring_mod, data.frame(Temp = 81)))
+```
+**c.**
+```{r}
+predict(oring_mod, data.frame(Temp = 81), type="response")
+```
+
+
+So, should NASA have launched the Challenger on a cold day of 31^o^F?  Since the coldest launch temperature prior to the Challenger disaster was 53^o^F, we should be careful about extrapolating our model to 31^o^F.  However, lacking other information, it's the best we've got.  With this in mind...    
+
+```{exercise}
+   
+a. Predict the **probability** $p$ that an o-ring would fail at this temperature.  Both calculate this prediction from scratch and check your work with the `predict()` function.    
+b. Check that your answer matches this visualization:
+
+```
+**a.**
+```{r}
+predict(oring_mod, data.frame(Temp = 31), type="response")
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=4, fig.height=2.5}
+pred3 <- predict(oring_mod, newdata=data.frame(Temp=31), type="response")
+ggplot(oring, aes(x=Temp, y=Broken)) +
+    geom_smooth(method="glm", method.args=list(family="binomial"), se=FALSE, fullrange=TRUE) +
+    labs(y="probability of breaking") + 
+    lims(x=c(0,100)) + 
+    geom_segment(x=31,xend=31,y=0,yend=pred3, color="darkgray") + 
+    geom_segment(x=0,xend=31,y=pred3,yend=pred3, color="darkgray")
+
+```    
+
+\noindent c. The Challenger had 6 o-rings.  The failure of *any* of these would've compromised the shuttle.  The predicted probability that *at least one* (only 1, or 2,..., or all 6) of the o-rings would fail is $1 - (1-p)^6$ where $p$ is the probability from your calculation above. Calculate the probability of at least one failure and comment on whether you think NASA should have launched the Challenger on this chilly day.    
+d. Explain one reason why this model may not be that reliable, and something we (NASA) could do (should've done) to improve the analysis.
+
+
+```{exercise, name="Interpreting Coefficients"}    
+
+Now that we've visualized the model and made predictions, let's interpret the model coefficients.  You can do this just as you did for "ordinary" regression models, but remember that the response here is log(odds of breaking).      
+a. Interpret the intercept coefficient on the log(odds) scale.    
+b. Interpret the intercept coefficient on the odds scale. HINT: `exp()`    
+c. Interpret the `Temp` coefficient on the log(odds) scale.    
+d. The log(odds) scale isn't very nice.  Interpret the `Temp` coefficient on the odds scale. Hint: we can convert this to the odds scale as follows.  If the `Temp` coefficient on the log(odds) scale is "b", then $$100\left(e^b - 1\right) = \text{ PERCENTAGE change in ODDS of breaking per 1 unit increase in Temp} $$. 
+
+```
+
+\
+
+# Project Phase III
+
+**Note**: If you are working with a partner, only one of you needs to complete this section with your joint answers. Make sure to list both partners' names.
+
+```{exercise, name="Interaction term: To include or not to include?"}
+   
+a. For one of your research questions, choose a quantitative response variable and two explantory variables, one quantitative and one categorical. Make a visualization that shows the relationship between these three variables.   
+b. Fit the model of the form `response ~ 1 + expQuant + expCat`. Interpret each of the model coefficients.   
+c. Make a visualization with the quantitative explanatory variable on the x-axis, the response variable on the y-axis, and a model line for each level of the categorical variable shown in a different color.   
+d. Add an interation term to your model. That is, fit a second model of the form `response ~ 1 + expQuant + expCat + expQuant*expCat`. Interpret each of the model coefficients.  
+e. Make a visualization with the quantitative explanatory variable on the x-axis, the response variable on the y-axis, and a model line (for this second model) for each level of the categorical variable shown in a different color.  
+f. Which of these two models is better for your research question and data? Briefly explain/justify your answer.   
+
+```
+
+```{exercise, name="Logistic regression"}
+   
+a. Choose a categorical response variable with just two possible outcomes (binary) for one of your research questions. If you do not have such a variable in your data set, you can `mutate` one (e.g., `mutate(newBinVar=(expQuant<42))` or `mutate(newBinVar=(expCat=="San Francisco"))`). Choose a main explanatory variable (predictor of interest) whose relationship with the binary response variable you would like to examine, and make a visualization showing the relationship between these two variables.  
+b. Construct a logistic regression model that includes your binary response variable, main explanatory variable, and any other covariates that should be controlled for (e.g., confounders, effect modifiers). Interpret the coefficients of your model **on the odds scale** (i.e., for each additional unit of the predictor of interest, the odds of your binary response associated with "1" increase/decrease by X%, controlling for the other variables).   
+c. Given the context of your research question, the model you created in the previous part, and the data, what do you think would be an appropriate threshold on the probability of the binary event of interest occuring to use for predicting when this event (represented by "1") occurs?      
+d. Using the threshold you identified in the previous part, find the false positive and false negative rates of your binary classifier on your data set.   
+
+```

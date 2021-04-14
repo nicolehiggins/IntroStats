@@ -7,6 +7,10 @@ output:
     toc_float: true
     toc_depth: 4
 ---
+```{r}
+350250-44669
+350250-173310
+```
 
 ```{r setup, include=FALSE}
 library(gridExtra)
@@ -50,14 +54,14 @@ mercury %>%
   geom_boxplot() +
   geom_density()
 ```
-The data are skewed right.
+The data are skewed right.  
 **b.**
 ```{r}
 summary(mercury$Concen)
 (1.6-.6)*1.5 + 1.6
 ```
-Any concentration above 3.1 is an outlier.
-**c.** Since the mean (1.192) is greater than the median (0.93), there is a right skew.
+Any concentration above 3.1 is an outlier.  
+**c.** Since the mean (1.192) is greater than the median (0.93), there is a right skew.  
 **d.** We define standard deviation (variance)^.5 to convert back to the units of observation.
 ```{r}
 var(mercury$Concen)
@@ -216,25 +220,57 @@ a. Complete the following table for each of the six models mentioned thus far:
 
 Model                                         Var(response)  Var(fitted)  Var(resid)  R^2
 --------------------------------------------- -------------- ------------ ----------- -----
-`Concen`~1                                                                0.580131    1.009282
-`Concen`~1+`Length` 
-`Concen`~1+`Weight`
-`Concen`~1+`River`
-`Concen`~1+`Station`+`Length`
-`Concen`~1+`River`+`Station`+`Length`+`Weight`
+`Concen`~1                                     0.580131     0             0.580131    0
+`Concen`~1+`Length`                            0.580131     0.2451047     0.3350263   0.4224989
+`Concen`~1+`Weight`                            0.580131     0.1779474     0.4021837   0.3067365
+`Concen`~1+`River`                             0.580131     0.009681719   0.5704493   0.01668885
+`Concen`~1+`Station`+`Length`                  0.580131     0.3590799     0.2210511   0.6189634
+`Concen`~1+`River`+`Station`+`Length`+`Weight` 0.580131     0.3600602     0.2200708   0.6206533
 
-```{r}
-var(resid(mod_0)^2)
+```{r, eval=FALSE}
+var(mod_0$fitted.values)
+var(mod_0$residuals)
+(var(mod_0$fitted.values) + var(mod_0$residuals) -> resp_0)
+var(mod_0$fitted.values) / resp_0
+```
+```{r, eval=FALSE}
+var(mod_1$fitted.values)
+var(mod_1$residuals)
+(var(mod_1$fitted.values) + var(mod_1$residuals) -> resp_1)
+var(mod_1$fitted.values) / resp_1
+```
+```{r, eval=FALSE}
+var(mod_2$fitted.values)
+var(mod_2$residuals)
+(var(mod_2$fitted.values) + var(mod_2$residuals) -> resp_2)
+var(mod_2$fitted.values) / resp_2
+```
+```{r, eval=FALSE}
+var(mod_3$fitted.values)
+var(mod_3$residuals)
+(var(mod_3$fitted.values) + var(mod_3$residuals) -> resp_3)
+var(mod_3$fitted.values) / resp_3
+```
+```{r, eval=FALSE}
+var(mod_4$fitted.values)
+var(mod_4$residuals)
+(var(mod_4$fitted.values) + var(mod_4$residuals) -> resp_4)
+var(mod_4$fitted.values) / resp_4
+```
+```{r, eval=FALSE}
+var(modKitCaboodle$fitted.values)
+var(modKitCaboodle$residuals)
+(var(modKitCaboodle$fitted.values) + var(modKitCaboodle$residuals) -> resp_KitCaboodle)
+var(modKitCaboodle$fitted.values) / resp_KitCaboodle
 ```
 
-
 \noindent b. Which model has the highest $R^2$ value? Does that make it the best model?
-
+**modKitCaboodle has the highest R^2 value, this does not mean it is the best model. Since adding River and Weight variables to mod_4 (giving us modKitCaboodle) didn't affect R^2 much, we would rather just use mod_4.**
 
 ```{exercise}
 In the data description, it said that obtaining mercury concentration in fish tissue by sending samples to a lab is expensive, yet, this study did just that. Of course, other aspects associated with each of the fish were also measured (i.e. `River`, `Length`, `Weight`, and `Station`). Can you think of a way in which, as a result of the data collected in this study, money and time could be saved in subsequent work?
-
 ```  
+**Data collection can be improved by using measurements such as length (underwater camera etc.), and fitting it to our concentration data rather than taking the exact concentration of the fish. Collecting data on variables such as length is cheaper and easier than bringing fish samples to a lab, and would give us similar results as our model is fairly accurate.**
 
 # Project phase 1
 
@@ -255,7 +291,8 @@ In this project, you will apply the tools we'll learn throughout the semester to
 ```{exercise,name="Partner or solo?"}
 
 Are you going to work on the project with a partner? If so, list your partner here.
-   
+
+Annika Carlson   
 ```
 
  
@@ -275,7 +312,7 @@ install.packages(NHANES) # only do this once in the console!
 ```
 
 Once you've installed the package, you can load and access the data:
-```{r eval = FALSE}
+```{r}
 library(NHANES)
 data(NHANES)
 head(NHANES) # look at first six rows
@@ -347,14 +384,14 @@ County-level demographics are estimated from the American Community Survey, and 
 ```{exercise, name="Choice of data set"}   
 
 Which of these five data sets will you use for your project?  
-  
+
 ```
 
 \
+**US National Health & Nutrition Examination Study (NHANES)**
 
 ```{exercise, name="Data structure"}   
    
-
 Import your data into RStudio/R Markdown. Summarize the following: 
 
 a. The number of cases and what they represent.     
@@ -363,10 +400,10 @@ b. The number of variables and, in general, what they measure.  (No need to go t
 ```
 
 \
-
+**a.** There are 10,000 cases, each representing a participant of the survey and their responses.
+**b.** There are 76 variables, they represent demographic categories such as gender, race, etc. as well as general health statistics such as sleep, drug use, etc..
 
 ```{exercise, name="Research questions"}
-   
    
 a. List 2-3 specific research questions that you might explore using this data set.   
 b. With respect to these research questions, identify which variable is your response.  This can either be quantitative or categorical.  Also identify a list of 2^+^ predictors.
@@ -375,10 +412,15 @@ b. With respect to these research questions, identify which variable is your res
 
 
 \
+**a.** Which drugs have the weakest correlation with home ownership?  
+How do gender and sexual orientation affect mental health?  
+When do most people begin ~rebelling~? Is this age affected by poverty or race?  
+**b.** response: home ownership; predictors: hard drug use, alcohol use, marijuana use  
+response: DaysMentHlthBad, Depressed; predictors: gender, sexual orientation, age  
+response: AgeRegMarij, SmokeAge, SexAge; predictors: poverty level, race, education?  
 
 ```{exercise,name="Data visualization"}
      
-
 Construct a series of four data visualizations that inform your research question(s) (you do not have to explore all of your potential research questions here, but you may).  Present these as: viz + 1 sentence summary + viz + 1 sentence summary + ...
     
 Combined, the viz should tell a story and follow a natural progression.  Use the following structure:    
@@ -387,6 +429,44 @@ a. Visualization 1: a simple univariate visualization of your main variable of i
 b. Next visualizations: simple univariate visualizations of your predictor variables.      
 c. Last visualizations: visualizations of the relationships between your variables.  *At least 1 of these visualizations must have 3^+^ variables.*    
 
-  
 ```    
 
+```{r}
+NHANES %>%
+  filter(SurveyYr == "2011_12") %>%
+  select(AgeFirstMarij, SmokeAge, SexAge, Poverty, Race3, Smoke100) -> clean_NHANES
+
+clean_NHANES %>%
+  ggplot() +
+  geom_density(aes(x =AgeFirstMarij), color = "green", size = 1, alpha = .7) +
+  geom_density(aes(x =SmokeAge), color = "darkgray", size = 1, alpha = .7) +
+  geom_density(aes(x =SexAge), color = "pink", size = 1, alpha = .7)
+```
+```{r}
+clean_NHANES %>%
+  group_by(Race3) %>%
+  #mutate(avg_pov = mean(Poverty)) %>% this wasn't functioning as expected
+  ggplot() +
+  geom_boxplot(aes(x = Race3, y = Poverty, color = Race3))
+```
+```{r}
+clean_NHANES %>%
+  remove_missing() %>%
+  group_by(Race3) %>%
+  summarise(avg_smoke = mean(SmokeAge), 
+            avg_weed =  mean(AgeFirstMarij), 
+            avg_sex = mean(SexAge)) %>%
+  ggplot() +
+  geom_vline(aes(xintercept = avg_smoke, color = Race3)) +
+  geom_vline(aes(xintercept = avg_weed, color = Race3), linetype = "longdash") +
+  geom_vline(aes(xintercept = avg_sex, color = Race3), linetype = "dotted", size = 1)
+```
+```{r}
+NHANES %>%
+  select(Age, SexOrientation, Gender, Depressed, DaysMentHlthBad) %>%
+  remove_missing() %>%
+  group_by(SexOrientation) %>%
+  summarise(avg_day = mean(DaysMentHlthBad)) %>%
+  ggplot() +
+  geom_hline(aes(yintercept = avg_day, color = SexOrientation), size = 3)
+```

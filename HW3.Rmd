@@ -1,0 +1,801 @@
+---
+title: "Introduction to Statistical Modeling    <br> Homework 3"
+author: "Nicole Higgins"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(DT)
+library(gridExtra)
+library(forcats)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+
+
+# Data Context
+
+Bike sharing is becoming a more popular means of transportation in many cities. The dataset we will analyze in this assignment comes from Capital Bikeshare, the bike-sharing service for the Washington DC area. The dataset originally comes from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset). We load it here:
+```{r}
+bikes<-read_csv("https://www.macalester.edu/~dshuman1/data/155/bike_share.csv")
+```
+
+**Our research goal** is to understand what factors are related to total number of riders on a given day so that you can help Capital Bikeshare plan its services.
+
+**Codebook**
+
+The variables and their meanings are listed below:
+
+- **`date`** : Date in format YYYY-MM-DD
+- **`season`** : Season (winter, spring, summer, or fall)
+- **`year`** : 2011 or 2012
+- **`month`** : 3-letter month abbreviation
+- **`day_of_week`** : 3-letter abbreviation for day of week
+- **`weekend`**: TRUE if the case is a weekend, FALSE if the case is a weekday
+- **`holiday`** : Is the day a holiday? (yes or no)
+- **`temp_actual`** : Actual temperature in degrees Fahrenheit
+- **`temp_feel`** : What the temperature feels like in degrees Fahrenheit
+- **`humidity`** : Fraction from 0 to 1 giving the humidity level
+- **`windspeed`** : Wind speed in miles per hour
+- **`weather_cat`** : Weather category. 3 possible values (categ1, categ2, categ3)
+    - **`categ1`**: Clear, Few clouds, Partly cloudy, Partly cloudy
+    - **`categ2`**: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
+    - **`categ3`**: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
+- **`riders_casual`**: Count of daily rides by casual users (non-registered users)
+- **`riders_registered`**: Count of daily rides by registered users
+- **`riders_total`** : Count of total daily rides (riders_casual + riders_registered)
+
+NOTE: The `year` variable is encoded as an integer and is thus intepreted by `R` as a quantitative variable by default. If you want `R` to treat `year` as a categorical variable in `ggplot()` or `lm()`, you need to use `factor(year)`.
+
+# Initial Models
+
+As a first pass, let's look at the effect of the temperature on ridership:
+
+```{r,fig.width=3.5,fig.height=3}
+ggplot(bikes,aes(x=temp_feel,y=riders_total))+
+  geom_point()+
+  geom_smooth(method="lm",se=FALSE)
+```
+
+The regression line corresponds to the following model:
+
+```{r}
+mod1<-lm(riders_total~1+temp_feel,data=bikes)
+mod1$coefficients
+```
+
+Next, let's add the categorical variable 
+`season` to the model:
+
+```{r}
+mod2<-lm(riders_total~1+temp_feel+season,data=bikes)
+mod2$coefficients
+```
+
+Recall, this type of model with one quantitative variable and one categorical variable represents $M$ parallel lines, where $M$ is the number of levels of the categorical variable. So, in this case, we have four parallel lines:
+
+```{r,fig.width=4.5,fig.height=3}
+ggplot(bikes,aes(x=temp_feel,y=riders_total,color=season))+
+  geom_point()+
+  geom_line(aes(y=mod2$fitted.values),size=2)
+```
+
+We can show this same graphic faceted by `season`:
+
+```{r,fig.height=3,fig.width=6}
+bikes%>%
+  mutate(mod2vals=mod2$fitted.values)%>%
+  ggplot(aes(x=temp_feel,y=riders_total,color=season))+
+  geom_point()+
+  geom_line(aes(x=temp_feel,y=mod2vals),size=2)+
+  facet_wrap(~season)
+```
+
+**Key point**: This model assumes that the relationship between `temp_feel` and `riders_total` is the same for all four seasons.
+<br>
+
+**Question**: Does that seem to be a reasonable assumption? **No, temperature may have different effects on ridership in different seasons.**
+
+
+\
+
+```{exercise,name="Review"}
+   
+a. Find the intercept and slope of the model line for the summer season.   
+b. According to this model, how many total riders do we expect on an 80 degree summer day?   
+  
+```
+
+\
+**a.** Intercept: -1171.55; Slope: 74.87414  
+**b.** 4818 riders  
+
+# Interaction Terms
+
+
+
+## Models with one quantitative and one categorical variable
+
+Now we are going to relax the assumption that the relationship between `temp_feel` and `riders_total` is the same for all four seasons. From a modeling viewpoint, the way to do this is to include an ***interaction term*** to account for the differences in this relationship across seasons.
+
+```{r}
+mod3<-lm(riders_total~1+temp_feel+season+temp_feel:season,data=bikes)
+mod3$coefficients
+```
+
+This model again corresponds to four lines, but they are no longer forced to be parallel. Here is a graphic that shows the four lines.
+
+```{r,fig.height=3,fig.width=6}
+ggplot(bikes,aes(x=temp_feel,y=riders_total,color=season))+
+  geom_point()+
+  geom_smooth(method="lm",se=FALSE,size=2)+
+  facet_wrap(~season)
+```
+
+\
+
+```{exercise}
+How do the slopes and intercepts of these four lines **qualitatively** compare to the corresponding parallel lines in the faceted graphic above?
+```
+
+\
+**Spring and fall are similar, while a degree increase in winter pulls many more riders and a degree increase in summer sees a decrease in riders.**  
+
+**Interpretation of Coefficients**: 
+
+- The `Intercept` coefficient is still the intercept of the line associated with the reference value (`fall`).   
+- The intercepts of the other lines are still given by adding the `Intercept` to the corresponding offset, just as before.   
+- Instead of being the slope of all lines, the `temp_feel` coefficient now represents the slope of the line for the reference level. It's interpretation (different from the case without interaction terms) is, "the amount that we expect the daily rider totals to increase for each degree increase in the perceived temperature, on average."   
+- The `temp_feel:seasonspring` coefficient says that, on average, each additional degree increase in the perceived temperature is associated with 3.76 more riders in the spring than in the fall (the reference level). Thus, the slope of the line for spring is given by `temp_feel`+`temp_feel:seasonspring`.
+
+\
+
+```{exercise}
+   
+a. Find the intercept and slope of the model line for the summer season.   
+b. According to this model, how many total riders do we expect on an 80 degree summer day?  
+c. How does your answer compare to the same question for the model above without the interaction terms? 
+  
+```
+```{r}
+mod3$coefficients
+```
+
+\
+**a.** Intercept = -1010.595407 + 8167.988638 = 7157.39; Slope = temp_feel + tempfeel:seasonsummer = -16.621727  
+**b.** 5828 riders  
+**c.** There are 1010 more riders using interaction terms  
+
+
+**Additional Notes**: 
+
+1. We wrote the model as:
+```
+`riders_total` ~ 1 + `temp_feel` + `season` + `temp_feel`:`season`
+```
+Equivalently, we could write it as:
+```{r}
+mod3a<-lm(riders_total~1+temp_feel+season+season:temp_feel,data=bikes)
+mod3a$coefficients
+```
+
+or
+```{r}
+mod3b<-lm(riders_total~temp_feel*season,data=bikes)
+mod3b$coefficients
+```
+
+2. This model with the interaction term included is the same as building four separate linear models for each seasonal subset of the data, ignoring all other data (i.e., faceting and then regressing).
+
+3. As suggested by the multiplication, in terms of the vector/indicator notation we discussed previously, we are adding extra columns to our data that are the products of the indicator vectors (for seasons) and the quantitative variable (`temp_feel`). See notes on board for more detais.
+
+
+## Models with two categorical variables
+
+Now let's try models with the same response variable, but two categorical variables: `season` and `weather_cat`. 
+
+Here is a visualization of the data:
+```{r}
+bikes %>%
+  ggplot(aes(y=riders_total,x = season, fill = weather_cat)) +
+  geom_boxplot()
+```
+
+\
+
+```{exercise,"Interpretation"}
+Interpret the above graphic. What patterns do you see? Anything that you expected? Anything surprising?
+```
+
+\
+**As weather category increases, total riders tends to decrease. Winter shows the most outliers. Regardless of weather category, summer shows the most riders while winter shows the least. We were surprised by the leap from category 2 weather to category 3, as the difference between category 1 and 2 is small.**
+
+OK, now we are ready to build some linear regression models. First, we'll try without interaction terms:
+```{r}
+mod4<-lm(riders_total~1+weather_cat+season,data=bikes)
+mod4$coefficients
+```
+
+\
+
+
+```{exercise}
+   
+a. From these model coefficients, make a table of all possible fitted values, for each combination of season and weather category (you can do this on paper).   
+b. Compare (i) the difference between the predicted values for `categ1` and `categ2` in the fall, and (ii) the difference between the predicted values for `categ1` and `categ2` in the spring. Are they similar?   
+c. Filter the data to find the average value of `riders_total` for all category 2 weather days in the spring. How does this compare to the prediction made by the model?
+  
+```
+
+\
+**a.**  
+Intercept:  
+        Fall        Winter        Spring        Summer  
+Cat 1   5161.808    2931.978      5305.755      5891.809  
+Cat 2   4450.196    2220.366      4594.142      5180.197  
+Cat 3   2068.404    -161.426      2212.351      2798.405
+**b.** They're identical
+```{r}
+5161.808-4450.196
+5305.755-4594.142
+```
+**c.** This average is about 360 riders fewer than the predicted amount calculated above.  
+```{r}
+bikes %>%
+  filter(season == "spring", weather_cat == "categ2") %>%
+  summarise(riders_avg = mean(riders_total))
+```
+
+
+
+Next, we'll add the interaction term between `season` and `weather_cat`. Remember, the model without the interaction term assumes that the relationship between `weather_cat` and `riders_total` does not change for different seasons; however, the side-by-side boxplot above suggests this not the case. So it is probably a good idea to include an interaction term here.
+
+```{r}
+mod5<-lm(riders_total~1+weather_cat+season+weather_cat:season,data=bikes)
+mod5$coefficients
+```
+
+\
+
+```{exercise}
+   
+a. Interpret the `weather_catcateg2:seasonspring` model coefficient.   
+b. What does this model predict for category 2 weather days in the spring? How does that compare to the previous model and the average of ridership over all such days in the data set?
+  
+```
+
+
+\
+**a.** There are 922.27968 fewer riders on a spring, category 2 weather day than a fall, category 1 weather day  
+**b.** This model predicts 4236.706 riders, which is identical to the actual average of the data set and 360 fewer than the previous model predicts.  
+
+
+## Additional exercise
+
+Instead of looking at seasons, let's add a new variable `isHot` that simply says whether it feels like 90 degrees or more.
+```{r}
+bikes<-mutate(bikes,isHot=ifelse(temp_feel>=90,"yes","no"))
+```
+
+```{r,echo=FALSE}
+bikes_select<-select(bikes,date,season,temp_feel,weather_cat,riders_total,isHot)
+DT::datatable(bikes_select, options = list(pageLength = 6))
+```
+
+<br>
+
+```{exercise}
+   
+a. Make a scatterplot of `temp_feel` vs. `rider_total`, with points colored by `isHot`.   
+b. Add a `geom_smooth(method="lm")` to your plot. How many additional lines do you see? To what model do these lines correspond? How do you know that?   
+  c. Make the model corresponding to your answer from (b) and print out the model coefficients.   
+d. How many riders does this model predict for an average 85 degree day?   
+  e. How about an average 95 degree day?
+
+```
+
+
+\
+**a.**  
+```{r}
+bikes %>%
+  ggplot(aes(x = temp_feel, y = riders_total, color = isHot)) +
+  geom_point()
+```
+**b.** We see two additional lines. These lines correspond to a linear regression model for each isHot binary. We know based on the legend and change in slopes.  
+```{r}
+bikes %>%
+  ggplot(aes(x = temp_feel, y = riders_total, color = isHot)) +
+  geom_point() +
+  geom_smooth(method="lm")
+```
+**c.**
+```{r}
+mod6 <- lm(riders_total~1+temp_feel+isHot+isHot:temp_feel,data=bikes)
+mod6$coefficients
+```
+**d.** 5828 riders
+**e.** 5579 riders
+```{r}
+-3233.5785+106.6043*95+ 18267.0549-206.1241*95
+```
+
+
+# Transformation Terms
+
+When the relationship between two variables does not appear to be linear based on visualizations or known physical models, it may be appropriate to add ***transformation terms*** to statistical models. These may include, e.g., polynomial terms, exponential, logarithmic, ratios, and others. We discuss only the first two here as examples.
+
+## Polynomial transformation terms
+
+Recall the relationship between `temp_feel` and `riders_total`:
+
+```{r}
+ggplot(bikes,aes(x=temp_feel,y=riders_total))+
+  geom_point()+
+  geom_smooth(method="lm",se=FALSE,size=2)
+```
+
+A single line may not be the correct model, as bikers may be less inclined to ride once the temperature reaches a certain level. Instead, we can try fitting a curve, such as a quadratic function. Note the use of `poly(x,2)` for a quadratic function of the variable `x`:
+
+```{r}
+ggplot(bikes,aes(x=temp_feel,y=riders_total))+
+  geom_point()+
+  geom_smooth(method="lm",formula=y~poly(x,2),se=FALSE,size=2)
+```
+
+```{r}
+modPoly2<-lm(data=bikes,riders_total~poly(temp_feel,2,raw=TRUE))
+modPoly2$coefficients
+```
+
+The curve given by this model is
+```
+-12331.1+383.0*`temp_feel`-2.0*`temp_feel`^2
+```
+
+We could also try a cubic function:
+
+```{r}
+ggplot(bikes,aes(x=temp_feel,y=riders_total))+
+  geom_point()+
+  geom_smooth(method="lm",formula=y~poly(x,3),se=FALSE,size=2)
+```
+
+**Important Warning**: Although tempting, it is rarely a good idea to include very high order polynomial terms in a statistical model like this. That is because the extra degrees of freedom often result in overfitting the model to the sample data, a concept we'll discuss more later in the week.
+
+Here is an example of overfitting:
+```{r}
+ggplot(bikes,aes(x=temp_feel,y=riders_total))+
+  geom_point()+
+  geom_smooth(method="lm",formula=y~poly(x,20),se=FALSE,size=2)
+```
+
+**Important Note**: The models above include terms that are non-linear in the explanatory variable `temp_feel`; however, they are still *linear* models (created with `lm()`), as the model is a linear combination of the explanatory vectors (see notes on board).
+
+
+The following code adds a new column to the `bikes` data frame with the Julian day (i.e., the first day of the year is 1, the second is 2, and so forth, up to a maximum of 366 in a leap year).
+
+```{r}
+bikes<-bikes%>%
+  mutate(dayofyear=lubridate::yday(date))
+```
+
+\
+
+```{exercise}
+   
+a. Make a scatterplot with `dayofyear` on the x-axis and `temp_feel` on the y-axis.   
+b. Add a `geom_smooth` to your plot with a regression line representing a quadratic function of `dayofyear`.   
+c. Find the model coefficients for this regression line, and write down the formula for the curve in terms of the day of the year.   
+d. Use the model to find the expected temperature on the 180th day of the year.   
+
+```
+
+\
+**a.**
+```{r}
+bikes %>%
+  ggplot(aes(x = dayofyear, y = temp_feel)) +
+  geom_point()
+```
+**b.**
+```{r}
+bikes %>%
+  ggplot(aes(x = dayofyear, y = temp_feel)) +
+  geom_point() +
+  geom_smooth(method="lm",formula=y~poly(x,2),se=FALSE,size=2)
+```
+**c.** y = 41.299 + 0.482791395 * x - 0.001231815 * x^2
+```{r}
+mod7<-lm(data=bikes,temp_feel~poly(dayofyear,2,raw=TRUE))
+mod7$coefficients
+```
+**d.** The expected temp on the 180th day is 88.291 degrees
+```{r}
+41.299 + 0.482791395 * 180 - 0.001231815 * 180^2
+```
+
+
+
+## Exponential transformation terms
+
+**Brainstorm**: Before looking at any, do you think the relationship between `riders_total` and `temp_feel` may be different on the weekend and weekday? If so, why and in what ways?
+
+```{r}
+ggplot(bikes,aes(x=temp_feel,y=riders_total))+
+  geom_point()+
+  facet_grid(weekend~.)
+```
+
+Let's build a model for the relationship between `temp_feel` and `riders_total` on weekend days of 80 degrees or less. One perfectly reasonable choice would be to use a polynomial model like a quadratic model. However, we are going to look at another choice: an exponential model.
+
+```{r}
+weekendCoolBikes<-bikes%>%
+  filter(weekend==TRUE,temp_feel<=80)
+```
+
+```{r}
+modExp<-lm(data=weekendCoolBikes,log(riders_total)~1 + temp_feel)
+modExp$coefficients
+```
+
+Our model is
+```
+log(riders_total) ~ 1 + temp_feel
+```
+
+If we exponentiate both sides, we have
+```
+riders_total ~ exp(1+temp_feel)
+```
+
+So our curve is of the form $y=Ce^{\alpha x}$, where $x$ is the temperature, $\alpha$ is equal to the model coefficient associated with `temp_feel`, and $C$ is $e$ raised to the power of the `Intercept` term.
+
+For example, for a 70 degree day, our model prediction is $e^{(5.17222852+70*0.04431752)}=3922.384$.
+
+```{r}
+weekendCoolBikes%>%
+  mutate(fitted=exp(modExp$fitted.values))%>%
+  ggplot(aes(x=temp_feel,y=riders_total))+
+  geom_point()+
+  geom_line(aes(y=fitted),size=2,color="blue")
+```
+
+# Model Evaluation and Variable Selection
+
+## Controlling for covariates
+
+Let's explore the relationship between day of the week and number of *registered* riders.
+
+\
+
+```{exercise}
+   
+a. Before looking at any data, write down a guess for the ranking of days, from busiest to least busy in terms of registered riders.   
+b. Make a visualization to explore this relationship. How accurate was your guess?   
+  c. Fit the model `riders_registered` ~ 1 + `day_of_week`, and interpret all model coefficients.    
+d. How does the expected number of registered riders on Monday compare to that on other weekdays? Any guesses why?
+  
+```
+
+**a.** We expect Friday is the busiest, and Sunday is the least busy.  
+**b.** We were correct in assuming Sunday would have the least riders, though were surprised to see Wednesday is typically the busiest.
+```{r}
+bikes$day_of_week <- factor(bikes$day_of_week, levels = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+
+bikes %>% 
+  ggplot(aes(y= riders_registered, x=day_of_week)) +
+  geom_boxplot()
+```
+**c.** On a typical Monday, we expect 3663.9905 riders. On any other day, we expect 3663.9905 + the corresponding coefficient.
+```{r}
+mod8 <- lm(data = bikes, riders_registered ~ 1 + day_of_week)
+mod8$coefficients
+```
+**d.** Mondays see fewer riders than other weekdays, this is likely due to the numerous Monday holidays.
+
+<br>
+
+When exploring the relationship between response $y$ and predictor $x$, there are typically covariates for which we want to control.
+
+\
+
+```{exercise}
+   
+a. Control for holidays by fitting the model `riders_registered` ~ 1 + `day_of_week` + `holiday`.   
+b. How did each of the coefficients for `day_of_week` change from your original model? Can you explain why?   
+  c. Make a side-by-side boxplot with `day_of_week` on the x-axis and two box plots for each day: one for holidays and one for non-holidays. Relate this graphic back to the changes you saw in the model coefficients.  
+d. What other variables might we want to control for when examining the relationship between `riders_registered` and `day_of_week`?   
+
+```
+
+\
+**a.**
+```{r}
+mod9 <- lm(data = bikes, `riders_registered` ~ 1 + `day_of_week` + `holiday`)
+mod9$coefficients
+290.4903 - 128.1064
+333.4038 - 171.0198
+3838.0928 - 3663.9905
+-947.5595 + 773.4571
+```
+**b.** Each day_of_week coefficient decreased by about 165, while the intercept increased by 174. The model assumes it is not a holiday, so we see an increase in typical Monday riders and the other days are shifted accordingly.  
+**c.**
+```{r}
+bikes %>% 
+  ggplot(aes(y= riders_registered, x=day_of_week, color = holiday)) +
+  geom_boxplot()
+```
+**d.** We may want to ask riders why they're riding, ex. to work, for leisure etc.
+
+
+## Nested Models and Adjusted $R^2$
+
+So, in our explorations of multivariate models, we’ve discussed how:
+
+- adding more predictors to a model might help us better explain the response;
+- adding more predictors to a model lets us control for important covariates;
+- adding more predictors to a model impacts our interpretation of the model coefficients.
+
+There are also limitations to indiscriminately adding more predictors to our model!
+
+Consider the following series of **nested models**:
+
+**Model A:** `riders_total` ~ 1 + `temp_feel`
+
+**Model B:** `riders_total` ~ 1 + `temp_feel` + `season`
+
+**Model C:** `riders_total` ~ 1 + `temp_feel` + `season` + `season:temp_feel`
+
+**Model D:** `riders_total` ~ 1 + `temp_feel` + `season` + `season:temp_feel` + `weekend`
+
+**Model E:** `riders_total` ~ 1 + `temp_feel`
++ `season` + `season:temp_feel` + `weekend` + `windspeed` 
+
+How much of the variation in `riders_total` does each of the five models explain? Let's check the multiple $R^2$ coefficients. To find each one, we use the `summary` command:
+
+```{r}
+modA<-lm(data=bikes,riders_total~1+temp_feel)
+summary(modA)
+```
+
+Here is a table of $R^2$ values:
+
+Model    $R^2$
+-----    ------
+Model A  0.3982
+Model B  0.4545
+Model C  0.4841
+Model D  0.4842
+Model E  0.4927
+
+\
+
+```{exercise}
+Based on these $R^2$ values, which variables might you decide to include in your model?
+  
+```
+**Generally, you want the greatest R^2 value that is a considerable increase from the model smaller than itself. So in this example,** riders_total**,** temp_feel **and** season **(with interaction between the later two as in Model E) is a great option, one may want to add** weekend **or** windspeed **if they find it interesting, though they do not drastrically increase the R^2**  
+
+<br>
+
+- As expected, the more variables we add, the more variation we can explain (it is mathematically guaranteed that the $R^2$ cannot decrease for a nested model like this)
+
+- Many statisticians argue that $R^2$ is therefore not a good measure of fit for a model
+
+- An alternative is the adjusted $R^2$ measure:
+
+$$ \overline{R^2} = R^2-(1-R^2)*\frac{p}{n-p-1}, $$
+
+where $n$ is the number of cases in the data frame, and $p$ is the number of explanatory variables (not including the intercept)
+
+- $\overline{R^2}$ is never bigger than $R^2$, and can be negative
+
+- Slightly different interpretation than $R^2$: rather than using it as a measure of fit for the model (how $R^2$ is used), it is more commonly used as a comparative tool when evaluating different nested models (i.e., when trying to decide whether to add another explanatory variable to the model)
+
+Let's append our table with the adjusted $R^2$ values (also found by `summary`):
+
+Model    $R^2$  Adjusted $R^2$
+-----    ------ --------------
+Model A  0.3982 0.3974
+Model B  0.4545 0.4515
+Model C  0.4841 0.4791
+Model D  0.4842 0.4785
+Model E  0.4927 0.4864
+
+The fact that the adjusted $R^2$ goes down from Model C to Model D suggests that we might not need to include the `weekend` variable in our model. Excluding it yields the following model:
+
+```{r}
+modF<-lm(data=bikes,riders_total~1+temp_feel+season+temp_feel:season+windspeed)
+summary(modF)
+```
+
+Later in the course, we will see other ways of assessing this "added contribution" of one or more variables.
+
+
+## Redundancy
+
+Let's add a new column to the data set that has the perceived temperature in Celcius instead of Farenheit:
+
+```{r}
+bikes<-bikes%>%
+  mutate(temp_feel_c=(temp_feel-32)*5/9)
+```
+
+Here is the `riders_total` data plotted against temperatures in both scales:
+
+```{r,echo=FALSE}
+p1<-ggplot(bikes,aes(x=temp_feel,y=riders_total))+geom_point()+xlim(c(0,110))
+p2<-ggplot(bikes,aes(x=temp_feel_c,y=riders_total))+geom_point()+xlim(c(0,110))
+grid.arrange(p1,p2,ncol=1)
+```
+
+\
+
+```{exercise}
+   
+a. Which of the following three models do you think will yield the highest $R^2$ level:  
+
+```
+
+
+**Model 1:** `riders_total` ~ 1 + `temp_feel`
+
+**Model 2:** `riders_total` ~ 1 + `temp_feel_c`
+
+**Model 3:** `riders_total` ~ 1 + `temp_feel` + `temp_feel_c`
+
+**a.** Assuming no rounding, they will be identical.  
+
+\noindent b. Try it out in `R`. How do the $R^2$ values compare?   
+c. Interpret the model coefficients for each model, and explain what is going on with these models.
+
+\
+**b.**  
+```{r}
+model1 <- lm(data = bikes, riders_total ~ 1 + temp_feel)
+model2 <- lm(data = bikes, riders_total ~ 1 + temp_feel_c)
+model3 <- lm(data = bikes, riders_total ~ 1 + temp_feel + temp_feel_c)
+#summary(model1)
+#summary(model2)
+#summary(model3)
+```
+Model    $R^2$  Adjusted $R^2$  
+-----    ------ --------------  
+Model A  0.3982 0.3974  
+Model B  0.3982 0.3974  
+Model C  0.3982 0.3974  
+  
+**c.** 
+```{r}
+model1$coefficients
+model2$coefficients
+model3$coefficients
+```
+
+The intercept in models 1 and 3 is predicting -1721 riders on a 0 degree Fahrenheit day (which is impossible in this context) while the intercept in model 2 is predicting 846 riders on a 0 degree Celcius day (32 F), a more likely temperature. With each degree increase in Fahrenheit and Celcius, we expect 83 and 150 more riders, respectively. Since the *temp_feel* coefficient is translated to create the *temp_feel_c* coefficient, they are the same data on a different scale, thus *temp_feel_c* in model 3 is not applicable because it is redundant. 
+
+## Multicollinearity
+
+Consider the following three models:
+
+```{r}
+model_temp_a <- lm(riders_total ~ temp_actual, data = bikes)
+model_temp_a$coefficients
+model_temp_f <- lm(riders_total ~ temp_feel, data = bikes)
+model_temp_f$coefficients
+model_temp_af <- lm(riders_total ~ temp_actual + temp_feel, data = bikes)
+model_temp_af$coefficients
+```
+ 
+\
+
+```{exercise}
+   
+a. Brainstorm with your group why the coefficients for `temp_feel` and `temp_actual` in `model_temp_af` change so much from the single predictor models `model_temp_a` and `model_temp_f`.   
+b. Which model(s) (of the 3 above) provide interpretable coefficients / information?
+  
+```
+
+\
+**a.** We notice the scalars in *model_temp_af* sum to a number in between the scalars in *model_temp_a* and *model_temp_f*. Perhaps the difference between the actual and feels-like temperature is summarized by these two coefficients.  
+**b.** The first two are more easily interpretable than the last, one degree increase in temperature relating to approx. 90 and 83 more daily riders, respectively.
+
+# Project Phase II
+
+
+```{exercise, name="Quantitative response variable and single quantitative explanatory variable"}
+   
+a. For your chosen data set, design a research question involving a quantitative outcome ($Y$ variable) and a quantitative explanatory variable ($X$). If you already had a research question on HW2 involving two quantitative variables, you can use that again here. Otherwise, you will need to come up with a new question.   
+b. Create a visualization that helps answer your first research question. In a brief paragraph, thoroughly describe what information you gain from this visualization. You may use numerical summaries in your paragraph to fully describe your visualization.   
+c. Write out notation for a simple linear regression model that addresses your first research question (replace $X$ and $Y$ with words in the following equation):
+
+  $$E{Y|X]=\beta_0 + \beta_1 X}$$
+
+Then, briefly explain why you are using this particular model to answer your research question.   
+d. Fit that model to the data using the `lm` function, and print out the coefficient estimates.   
+e. Interpret the slope and intercept of your model using full sentences.
+
+  
+```
+
+```{r}
+library(NHANES)
+data(NHANES)
+```
+**a.** What correlation exists between age and weight?  
+**b**  
+```{r}
+NHANES %>%
+  ggplot(aes(x = Age, y = Weight)) +
+  geom_point(alpha = .5) +
+  geom_smooth(color = "red")
+```
+**c.** E{Weight | Age = 8.72 + 0.394 * Age}  
+**d.** Since both variables are quantitative, we can easily interpret a linear model.  
+```{r}
+mod_wgt <- lm(data = NHANES, Age ~ 1 + Weight)
+mod_wgt$coefficients
+```
+**e.** This model shows that for every extra year in age, people weigh approximately .394 more pounds.  
+
+
+```{exercise, name="Quantitative response variable and two explanatory variables - one quantitative and one categorical"}
+   
+a. For your chosen data set, design a second research question involving a quantitative outcome ($Y$ variable) and two explanatory variables - one quantitative and one categorical. If you already had a research question on HW2 involving such variables, you can use that again here. Otherwise, you will need to come up with a new question.   
+b. Create a visualization that helps answer this second research question. In a brief paragraph, thoroughly describe what information you gain from this visualization. You may use numerical summaries in your paragraph to fully describe your visualization.   
+c. Write out notation for a multivariate linear regression model that addresses your second research question. Do not include any interaction terms in your model. Briefly explain why you are using this particular model to answer your research question.  
+d. What form does your model take? i.e., how many model lines are there? Are they parallel?   
+e. Fit that model to the data using the `lm` function, print out the coefficient estimates, and interpret each coefficient using a full sentence.      
+f. Find the slopes and intercepts for each of the model lines.   
+
+```
+**a.** How is weight affected by age and long-term alcohol use?  
+**b.**
+```{r}
+NHANES %>%
+  filter(Age >= 21) %>%
+  ggplot(aes(x = Age, y = Weight, color = Alcohol12PlusYr)) +
+  geom_point(alpha = .5) +
+  facet_wrap(~Alcohol12PlusYr) +
+  geom_smooth(color = "red")
+```
+**b.** From this visualization, we notice a weak correlation between alcohol use and weight. We also notice the majority of survey participants answered "Yes" to using alcohol for more than 12 years, so the data are skewed towards them. The trend line for long-term alcohol use indicated that alcohol users tend to maintain their weight longer than non-users.  
+**c.** Since we are assuming weight and alcohol use depend on age, we are using those as our response variables in a linear regression model. E{Weight | (Age, Alcohol12PlusYr) = 81.82 - 0.0227 * Age + 2.325 * Alcohol12PlusYr}  
+**d.** The model is a linear best fit line, the two resulting lines (AlcUseYes and AlcUseNo) are parallel.  
+**e.** The intercept is the average weight of a non-user, the slope indicates the expected weight lost per year, and the 'Alcohol12PlusYrYes' coefficient tells us that at any age, a user is approximately 2.3 lbs heavier than a non-user of that age.  
+```{r}
+mod_alc <- lm(data = NHANES, Weight ~ Age + Alcohol12PlusYr)
+mod_alc$coefficients
+```
+**f.** Alcohol12PlusYrYes: intercept = 84.144, slope = -0.0227  
+Alcohol12PlusYrNo: intercept = 81.819, slope = -0.0227  
+
+```{exercise, name="Add an interaction term to the model"}
+   
+a. Repeat parts (c)-(f) of Exercise 6.2 with the same explanatory and response variables, but with an added interaction term between the categorical and quantitative explantory variables.  
+b.  Do you recommend including the interaction term in your model? Briefly justify your answer. 
+
+```
+**a.**
+*c.* E{Weight | (Age, Alcohol12PlusYr) = 81.82 - 0.0227 * Age + 2.325 * Alcohol12PlusYr + Age:Alcohol12PlusYr} Using this model will allow variance in best fit lines between alcohol users and non-users.  
+*d.* The model is a linear best fit line, the two resulting lines (AlcUseYes and AlcUseNo) are not parallel.  
+*e.* The intercept is the average weight of a non-user, the 'Age' coefficient is the weight lost each year by a non-user. Adding this slope to the 'Age:Alcohol12PlusYrYes' coefficient gives us the weight gained each year by a user. 'Alcohol12PlusYrYes' is the difference between the average weight of a user and non-user.  
+```{r}
+mod_alc_int <- lm(data = NHANES, Weight ~ Age + Alcohol12PlusYr + Age:Alcohol12PlusYr)
+mod_alc_int$coefficients
+```
+*f.* Alcohol12PlusYrYes: intercept = 82.484, slope = 0.0133  
+Alcohol12PlusYrNo: intercept = 87.078, slope = -0.127  
+
+**b.** Including the interaction term made the models more accurate to the data, we recommend them.
+
+
+
+
+

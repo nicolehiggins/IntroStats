@@ -1,0 +1,203 @@
+---
+title: "Introduction to Statistical Modeling <br> Activity A15: Zebra Mussels Group Activity"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+# Instructions
+
+- Work with your assigned groups
+- Although you are welcome to each write code individually, you do not need to do so
+- Discuss the concepts at each stage to make sure everyone in your group understands them
+- Solutions will be posted shortly after class, so you can review them
+
+# Introduction
+
+Zebra mussels are a small, fast reproducing species of freshwater mussel native to southeast Russia. They've accidentally been introduced in other areas, competing with native species. Zebra mussels even attach themselves to other mussels, sometimes starving those mussels. 
+
+Macalester Professor Daniel Hornbach and colleague Shirley Baker examined whether zebra mussels gain an advantage by attaching to other mussels rather than to rocks. They collected samples of small rocks and Amblema plicata mussels, each of which had a collection of zebra mussels attached. The group of mussels from each individual rock or Amblema were removed and placed in an aquarium equipped to measure nitrogen excretion as measured by ammonia.  They went on to study how the variability in this physiological activity depends on the mass of the zebra mussel group and surface to which the group is attached. Their collected data can be imported by
+
+```{r}
+muss <- read_csv("http://www.macalester.edu/~dshuman1/155/mussels.csv")
+```
+
+We'll focus on these six variables:
+
+- ```count```    Number of mussels in the group.
+
+- ```attach```   Substrate to which the group was attached (a rock or an Amblema mussel).
+
+- ```dry.mass```     Mass of the dried tissue of the group, in grams.
+
+- ```AvgMass```      The average mass per individual (```dry.mass```/```count```).
+
+- ```ammonia```     Nitrogen excretion measured as ammonia in mg per hour for the group.
+
+- ```AvgAmmonia```   The average nitrogen excretion per individual (```ammonia```/```count```).
+
+
+We'll model the average ammonia excretion as a function of the average individual mass of each group and the substrate to which the group is attached, _simultaneously_:
+```
+AvgAmmonia ~ 1 + AvgMass + attach
+```
+
+# Questions
+
+**Q1**: Which of the six variables mentioned above are quantiative and which are categorical?
+
+**Q2**: Make a scatter plot of the data, with `AvgMass` on the x-axis, `AvgAmmonia` on the y-axis, and each point having  different colors based on the substrate to which the group was attached (Amblema or Rock). 
+
+```{r}
+muss %>%
+  ggplot(aes(x = AvgMass, y = AvgAmmonia, color = attach)) +
+  geom_point()
+```
+
+
+**Q3**: Use the function `lm()` to compute the linear model coefficients for the model   `AvgAmmonia` ~ 1 + `AvgMass` + `attach`. 
+```{r}
+mod1 <- lm(data = muss, `AvgAmmonia` ~ 1 + `AvgMass` + `attach`)
+mod1$coefficients
+```
+
+
+**Q4**: From the model coefficients, are you able to tell the groupwise means of `AvgMass` broken down by the attached substrate (i.e., the mean of `AvgMass` across all mussel groups attached to "Amblema" and the mean of `AvgMass` across all mussel groups attached to "Rock")? If yes, what are these two groupwise means? If not, compute these two groupwise means in some other fashion.
+```{r}
+muss %>%
+  filter(attach == "Rock") %>%
+  summarise(mean = mean(AvgMass))
+muss %>%
+  filter(attach == "Amblema") %>%
+  summarise(mean = mean(AvgMass))
+```
+
+
+**Q5**: What is/are the response variable(s) in this model? What is/are the explanatory variable(s) in this model?
+
+**Q6**: What is the reference level for the variable `attach`?
+Amblema
+
+**Q7**: Provide an interpretation for the model coefficient associated with `AvgMass`. 
+for each extra gram in mass, the average ammonia excretion will increase by 0.2393 mg/hr
+
+**Q8**: Fit model values to each case in the data set, and add a new column called `mod1vals` to the data frame with these fitted model values. Now add a second new column with the residuals between the actual average nitrogen excretion for each case and the fitted model value.
+```{r}
+muss %>%
+  mutate(mod1vals = predict(mod1), resid = (mod1vals - AvgAmmonia)) -> muss
+```
+
+
+**Q9**: Compute the following five variances: 
+
+- the variance of `AvgAmmonia`
+- the variance of `AvgAmmonia` across all mussels attached to rock
+- the variance of `AvgAmmonia` across all mussels attached to Amblema
+- the variance of the fitted model values
+- the variance of the residuals
+
+```{r}
+var(muss$AvgAmmonia)
+muss %>%
+  filter(attach == "Rock") %>%
+  summarise(varRock = var(AvgAmmonia))
+muss %>%
+  filter(attach == "Amblema") %>%
+  summarise(varAmblema = var(AvgAmmonia))
+var(muss$mod1vals)
+var(muss$resid)
+9.826564e-07 + 5.910347e-06
+```
+
+
+**Q10**: What relationship(s), if any, do you expect to see between these variances? If you expect any, verify them numerically.
+var(resid) + var(fitted) = var(response): 9.826564e-07 + 5.910347e-06 = 6.893003e-06
+
+**Q11**: Use `geom_line(aes(y=mod1vals))` to add a layer on top of your scatter plot from Question 2 that shows your fitted model values. 
+```{r}
+muss %>%
+  ggplot(aes(x = AvgMass, y = AvgAmmonia, color = attach)) +
+  geom_point() +
+  geom_line(aes(y=mod1vals))
+```
+
+
+**Q12**: This model consists of two lines: one for mussels attached to rock, and one for mussels attached to Amblema. These lines can be represented as 
+
+For mussels attached to rock: `AvgAmmonia` = $m_R$ * `AvgMass` + $b_R$ , and
+
+For mussels attached to Amblema:  `AvgAmmonia` = $m_A$ * `AvgMass` + $b_A$ 
+
+Find $m_R$, $b_R$, $m_A$, and $b_A$. What are the slopes of these two model lines? By how much do they differ?
+```{r}
+mod1$coefficients
+```
+$m_R$ = $m_A$ = 0.239279330 (slope)
+$b_R$ = 0.001139814 - 0.002562909 = -0.001423095
+$b_A$ = 0.001139814
+difference = -0.000283281
+
+
+**Q13**: According to the model, on average, what do we expect the average ammonia excretion per individual to be for a mussel group that is attached to rock and has an average individual mass of 0.025 grams?
+```{r}
+-0.001423095 +0.239279330 * 0.025
+```
+
+**Q14**: Based on this model, would you say that zebra mussels that attach to other mussels show more physiological activity than zebra mussels that attach to rocks?
+YES
+
+**Q15**: What does this model assume about the relationship between ammonia, mass, and attachment surface? Does  this appear to be a reasonable assumption?
+No interaction between mass and attachment, assumes a linear relationship. Looks p good.
+
+**Q16**: What is the $R^2$ value for this model? How do you interpret that? 0.8574, it's p good
+```{r}
+summary(mod1)
+```
+
+
+**Q17**: Fit a second model: `AvgAmmonia` ~ 1 + `AvgMass` + `attach` + `AvgMass*attach`.
+```{r}
+mod2 <- lm(data = muss, `AvgAmmonia` ~ 1 + `AvgMass` + `attach` + AvgMass:attach)
+mod2
+```
+
+
+This model consists of two lines: one for mussels attached to rock, and one for mussels attached to Amblema. These lines can be represented as 
+
+For mussels attached to rock: `AvgAmmonia` = $m_R$ * `AvgMass` + $b_R$ , and
+
+For mussels attached to Amblema:  `AvgAmmonia` = $m_A$ * `AvgMass` + $b_A$ 
+
+Find $m_R$, $b_R$, $m_A$, and $b_A$. What are the slopes of these two model lines? By how much do they differ?
+
+**Q18**: Make a visualization that shows the two model lines from this model on top of your scatter plot from Q2.
+```{r}
+muss %>%
+  ggplot(aes(x = AvgMass, y = AvgAmmonia, color = attach)) +
+  geom_point() +
+  #geom_line(aes(y=mod1vals)) +
+  geom_smooth(method = "lm")
+```
+
+
+**Q19**: Interpret the `AvgMass:attachRock` coefficient of this model.
+
+**Q20**: How many of the mussel groups were attached to rock? How many individual mussels were attached to rock?
+```{r}
+muss %>%
+  filter(attach == "Rock") %>%
+  summarise(n = n(), sum(count))
+```
+
+
+**Q21**: What are the mean, median, and inter-quartile range for the number of individual mussels per group (the `count` variable)? Is the distribution skewed to the left or right? Use a box and whisker plot and/or a density plot to confirm your answer.
+```{r}
+summary(muss$count)
+muss %>%
+  ggplot() +
+  geom_boxplot(aes(y = count))
+```
+
+
