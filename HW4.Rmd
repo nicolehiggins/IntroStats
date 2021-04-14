@@ -193,11 +193,11 @@ a. Predict the **probability** $p$ that an o-ring would fail at this temperature
 b. Check that your answer matches this visualization:
 
 ```
-**a.**
+**a. and b.**
 ```{r}
 predict(oring_mod, data.frame(Temp = 31), type="response")
 ```
-
+which does match the visualization
 
 
 
@@ -212,9 +212,13 @@ ggplot(oring, aes(x=Temp, y=Broken)) +
 
 ```    
 
-\noindent c. The Challenger had 6 o-rings.  The failure of *any* of these would've compromised the shuttle.  The predicted probability that *at least one* (only 1, or 2,..., or all 6) of the o-rings would fail is $1 - (1-p)^6$ where $p$ is the probability from your calculation above. Calculate the probability of at least one failure and comment on whether you think NASA should have launched the Challenger on this chilly day.    
+\noindent c. The Challenger had 6 o-rings.  The failure of *any* of these would've compromised the shuttle.  The predicted probability that *at least one* (only 1, or 2,..., or all 6) of the o-rings would fail is $1 - (1-p)^6$ where $p$ is the probability from your calculation above. Calculate the probability of at least one failure and comment on whether you think NASA should have launched the Challenger on this chilly day.  
 d. Explain one reason why this model may not be that reliable, and something we (NASA) could do (should've done) to improve the analysis.
-
+**c.** This is an incredibly high probability, thus, NASA should not have launched the Challender on this day.
+```{r}
+1-(1-0.8177744)^6
+```
+**d.** By only looking at temperature, we are limited to this one correlation, other factors such as humidity and age of the o-rings could also affect their rate of failure and should be tracked.
 
 ```{exercise, name="Interpreting Coefficients"}    
 
@@ -227,6 +231,15 @@ d. The log(odds) scale isn't very nice.  Interpret the `Temp` coefficient on the
 ```
 
 \
+```{r, eval=FALSE}
+mod2
+exp(5.0850)
+100*(exp(-0.1156)-1)
+```
+**a.** The log(odds) of o-ring breakage at 0 degrees F is 5.085  
+**b.** The odds of o-ring breakage at 0 degrees F is 161.5799  
+**c.** For each degree increase in temperature, the log(odds) of o-ring breakage decreases by 0.1156  
+**d.** The percentage chane in odds of breaking per 1 unit increase in temperature is -10.91685
 
 # Project Phase III
 
