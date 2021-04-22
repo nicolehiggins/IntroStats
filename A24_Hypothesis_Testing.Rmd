@@ -1,0 +1,390 @@
+---
+title: "Introduction to Statistical Modeling   <br> Activity A24: Hypothesis Testing"
+author: "INSERT STUDENT NAME HERE"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+<!-- ignore this little bit of code below  -->
+<style>
+table {
+  border-collapse: collapse;
+}
+
+td, th {
+  border: 1px solid #999;
+  padding: 0.5rem;
+  text-align: left;
+}
+</style>
+
+
+```{r setup, echo=FALSE,message=FALSE}
+library(mosaic)
+library(ggplot2)
+library(gridExtra)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+# Introduction 
+
+We have learned:
+
+- to use samples to estimate means, model coefficients, model values, etc
+- measure the potential error in these estimates
+- use this error to construct CIs for the population quantity of interest
+
+Next we'll use these tools to **test hypotheses** about the population of interest.  The hypotheses might be based on a question of interest such as:
+
+- When controlling for height, is there a significant relationship between brain size and IQ?   
+- Is the mean Macalester GPA significantly higher than 3.3, the mean of all private institutions?
+
+
+In each case, we'll state a hypothesis and use sample data to assess the quality of the hypothesis.
+
+**Hypothesis tests** provide a formal framework for how to state a hypothesis and use sample data to assess the quality of the hypothesis. There are countless types of hypothesis tests. It’s impossible (and unnecessary) to cover every one of these. Rather, we’ll focus on the foundations of hypothesis testing that transfer to every hypothesis test. This will give us the tools to pick up new hypothesis tests outside of class and to interpret any hypothesis test report in journal/news articles. Though the goals vary from test to test, all hypothesis tests share a common structure:
+
+
+1. set up hypotheses    
+2. compare our sample results to the null hypothesis    
+     - calculate a test statistic    
+     - calculate a p-value    
+3. make a conclusion    
+
+
+Let's explore these elements through an example.
+
+
+# Example: Drunk Driving
+
+When police officers pull over a suspected drunk driver, they put him/her through the "Walk the Line Test". The driver is asked to take 10 heel-to-toe steps along an imaginary straight line. For one such suspected drunk driver, the distance of the step from the line was measured (in feet):
+
+<table>
+
+
+<tr>
+<td><b>Step</b>
+</td>
+<td>
+1
+</td>
+<td>
+2
+</td>
+<td>
+3
+</td>
+<td>
+4
+</td>
+<td>
+5
+</td>
+<td>
+6
+</td>
+<td>
+7
+</td>
+<td>
+8
+</td>
+<td>
+9
+</td>
+<td>
+10
+</td>
+</tr>
+
+
+
+
+<tr>
+<td><b>Dist</b> (in ft)
+</td>
+<td>
+0.01
+</td>
+<td>
+0.03
+</td>
+<td>
+0.65
+</td>
+<td>
+0.02
+</td>
+<td>
+0.61
+</td>
+<td>
+0.10
+</td>
+<td>
+1.50
+</td>
+<td>
+0.67
+</td>
+<td>
+0.20
+</td>
+<td>
+0.07
+</td>
+</tr>
+</table>
+
+<br>
+
+_Do you think this person was sober?_
+
+
+# Hypothesis
+
+$H_0$:  **null hypothesis**
+This is the _default_ hypothesis, usually meaning that there is "no relation" or "no effect".
+
+$H_a$:  **alternative hypothesis**
+This is the hypothesis for which we would like evidence.
+
+_Innocent until proven guilty_:  assume $H_0$ and put the burden of proof on $H_a$.
+
+
+```{exercise}   
+For this drunk driving example, what are $H_0$ and $H_a$?
+
+```
+
+# Test statistic
+
+**The test statistic is the one number summary used to assess the quality of $H_0$.**
+
+In the drunk driving example, what are some possible test statistics we could use? That is, what number might we calculate from the data that would be useful for assessing $H_0$ (the hypothesis that the driver is sober)?  
+
+How about the maximum distance from the center line or the mean distance from the center line?  
+
+```{r}
+sampleWalk = c(0.01, 0.03, 0.65, 0.02, 0.61, 0.10, 1.50, 0.67, 0.20, 0.07)
+max(sampleWalk)
+mean(sampleWalk)
+```
+
+
+Is this statistic smaller than you would expect for a sober driver ($H_0$ true)? Larger than you’d expect? To answer these questions, we need to know the typical behavior of sober drivers! To this end, let’s generate some data and corresponding test statistics for sober drivers. 
+Begin by considering one sober driver:
+
+```{r}
+source("https://www.macalester.edu/~dshuman1/data/155/Math155RCode.R")
+set.seed(2013)
+#Using the max distance for our test statistic.
+sober(teststat = max, n=1)
+set.seed(2013)
+#Using the mean distance for our test statistic.
+sober(teststat = mean, n=1)  
+```
+
+Now let's examine the maximum and mean distances for 1000 sober drivers:
+
+```{r, fig.width=8,fig.height=3}
+set.seed(2013)
+SoberData1 = sober(teststat = max, n=1000) #test stats for 1000 sober drivers
+SoberData1<-as.data.frame(SoberData1)
+g1<-ggplot(SoberData1,aes(x=teststat))+
+  geom_density(fill="red",alpha=.4)+
+  labs(x="Maximum Distance from Center (ft)")
+
+set.seed(2013)
+SoberData2 = sober(teststat = mean, n=1000) #test stats for 1000 sober drivers
+SoberData2<-as.data.frame(SoberData2)
+g2<-ggplot(SoberData2,aes(x=teststat))+
+  geom_density(fill="red",alpha=.4)+
+  labs(x="Mean Distance from Center (ft)")
+grid.arrange(g1,g2,ncol=2)
+```
+
+This plot approximates the sampling distribution of the test statistic when $H_0$ is true (i.e. “under the null hypothesis”). 
+
+```{exercise}
+Based on this plot, are the test statistics of our sample walker compatible with $H_0$? Why or why not?
+
+```
+
+
+# p-Value
+
+Deeming a test statistic as "larger than we’d expect" or "smaller than we’d expect" when $H_0$ is true (as we did above) is quite subjective. For instance, what value is large enough to conclude the driver is drunk???
+
+ 
+**Definition**    
+A **p-value** is the probability of observing our results "by chance;" i.e. the probability of observing a test statistic as or more extreme than ours (relative to $H_a$) **IF $H_0$ were indeed true**. In conditional probability terms it is equal to $P(\text{data } | H_0)$.      
+<br>
+
+**Common Misconception**    
+
+The p-value measures the compatibility of our data with $H_0$, *not* the compatibility of $H_0$ with our data.  Thus the p-value *cannot* be interpreted as the probability that $H_0$ is true.    
+
+```{example}
+Use the fictitious sample of 1000 sober drivers to estimate and interpret the p-value for the drunk driving hypotheses, using the mean distance test statistic.
+
+```
+
+```{r}
+(pdat<-pdata(.386,SoberData2$teststat))
+sum(pdat)/1000
+```
+
+So according to our simulations, sober people have a mean deviation from the line of at least 0.386 only 1.8% of the time. Our p-value is 1.000-0.982=0.018.
+
+-  What if, instead, we observed a mean distance of 0.2 feet, a value that seems fairly typical for a sober driver? What would be the corresponding p-value?
+
+```{r}
+(pdat2<-pdata(.2,SoberData2$teststat))
+sum(pdat2)/1000
+```
+
+
+# Conclusion
+
+**Interpreting the p-value**    
+ 
+The smaller the p-value, the more evidence we have against $H_0$:    
+
+- Small p-value:    
+    Data like ours would be uncommon if $H_0$ were indeed true, i.e. our data are not compatible with $H_0$.    
+ - Large p-value:    
+    Data like ours would be typical if $H_0$ were indeed true, i.e. our data are compatible with $H_0$.
+
+**Drawing a conclusion**
+
+To determine if the p-value is “small enough” to decide against $H_0$, we compare it to a chosen **significance level** $\alpha$. For example, we might choose $\alpha = 0.10, 0.05$, or $0.01$.
+
+
+-  p-value $< \alpha$ $\implies$ Reject $H_0$ in favor of $H_a$.  Results are “statistically significant” at level $\alpha$.
+
+-  p-value $\geq \alpha$ $\implies$ Fail to reject $H_0$ in favor of $H_a$.
+Not enough evidence to conclude $H_0$ is false. Results are not “statistically significant” at level $\alpha$.
+
+Note: The above guidance is nice, but alone it produces an incomplete conclusion. p-values MUST be supplemented with information about the magnitude of the sample estimate and its corresponding standard error.
+
+
+```{exercise}
+      
+Use the mean distance from the center as the test statistic.
+
+**a)** What is your conclusion about the sobriety of our driver at the $\alpha = 0.05$ level?
+  
+**b)** For which values of the mean distance would we reject $H_0$ at the $\alpha = 0.05$ level? That is, what values of the mean distance test statistic would have p-values less than $0.05$?  NOTE: `quantile(x, 0.4)` calculates the 40th percentile of the sample `x`.
+
+**c)**  For which values of the mean distance test statistic would we reject $H_0$ at the $\alpha = 0.20$ level?
+
+**d)**  Given your above answers, what would be the consequences of choosing $\alpha = 0.20$ instead of $\alpha = 0.05$?
+
+```
+**a.** Since our p-value is less than 0.05, there is sufficient evidence that the driver is not sober at the 0.05 level.  
+**b.** We would reject H_0 if the person deviates more than 0.338 from the line, concluding they are drunk.
+```{r}
+quantile(SoberData2$teststat, 0.95)
+```
+**c.** We would reject H_0 if the person deviates more than 0.265 from the line, concluding they are drunk. (less confident)
+```{r}
+quantile(SoberData2$teststat, 0.8)
+```
+**d.** An alpha of 0.2 broadens the range of people we would classify as drunk, though with less confidence. 
+
+
+# Errors in Hypothesis Testing
+
+Inference based on a hypothesis test may not always reflect the truth!  Two different types of error are possible.  We may fail to reject $H_0$ when $H_a$ is true, or we may reject $aH_0$ when $H_0$ is true.  
+
+Important note: "Error" doesn’t mean we did anything wrong - it just means that the conclusion based on our data does not reflect the truth (i.e. we got unlucky data).
+
+<table>
+
+<tr>
+<td>
+</td>
+<td>
+$H_0$ true
+</td>
+<td>
+$H_a$ true
+</td>
+
+</tr>
+
+
+<tr>
+<td>Do not reject $H_0$
+</td>
+<td>
+OK!
+</td>
+<td>
+Type II error
+</td>
+
+</tr>
+
+<tr>
+<td>Reject $H_0$
+</td>
+<td>
+Type I error
+</td>
+<td>
+OK!
+</td>
+</tr>
+</table>
+
+<br>
+
+```{exercise}
+For the drunk driving example, what would be Type I and Type II errors?
+
+```
+
+## Type I and Type II error trade-offs
+
+Let's consider the trade-offs between Type I and Type II errors.  First we'll generate a sample of 1000 drunk drivers.
+
+```{r}
+DrunkData = drunk(teststat = mean, n=1000) #test stats for 1000 drunk drivers
+```
+
+Now, let's compare the distributions of the mean distances from the center line for the 1000 sober and 1000 drunk drivers:
+
+```{r,fig.width=5,fig.height=3}
+Drivers<-data.frame(mean_dist=c(SoberData2$teststat,DrunkData$teststat),status=c(rep("Sober",1000),rep("Drunk",1000)))
+ggplot(Drivers,aes(x=mean_dist,fill=status))+
+  geom_density(alpha=.3)
+```
+ 
+
+```{exercise}
+   
+**a)** Let's say a driver is sober, and their mean distance from center follows the distribution for sober people above. Estimate the probability of making a Type I error when $\alpha = 0.05$. Estimate the same probability for $\alpha = 0.20$.
+
+**b)**  The **power** of a hypothesis test is the probability that it correctly rejects $H_0$ when $H_0$ is false (i.e the probability of not committing a Type II error).  Estimate the powers for $\alpha = 0.05$ and $\alpha = 0.20$.
+
+**c)** Explain why there is a trade-off between Type I and Type II errors.   
+```
+**a.** 5.1% of sober people will be incorrectly labeled as drunk with a = 0.05. 1.5% of sober people 
+```{r}
+(pdat<-pdata(.338,DrunkData$teststat))
+sum(pdat)/1000
+(pdat<-pdata(.265,DrunkData$teststat))
+sum(pdat)/1000
+```
+
+
+
+
+
+
+

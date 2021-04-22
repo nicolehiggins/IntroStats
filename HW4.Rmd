@@ -255,6 +255,42 @@ e. Make a visualization with the quantitative explanatory variable on the x-axis
 f. Which of these two models is better for your research question and data? Briefly explain/justify your answer.   
 
 ```
+**a.**
+```{r}
+library(NHANES)
+NHANES %>%
+  ggplot(aes(x = Height, y = BMI, linetype = Gender)) +
+  geom_smooth(size = .5, se = FALSE)
+```
+**b.** Keeping height constant, men have an average BMI that is 2.038702 lower than that of women. In general, a cm increase in height equates to a 0.1720541 increase in BMI. At a height of 0, one would have an average BMI of -0.1765541 (non-applicable in this context).
+```{r}
+modBMI <- lm(data = NHANES, BMI ~ 1 + Height + Gender)
+modBMI$coefficients
+
+predict(modBMI, data.frame(Height = 120, Gender = 'female'))
+```
+**c.**
+```{r}
+NHANES %>%
+  ggplot(aes(x = Height, y = BMI, color = Gender)) +
+  geom_smooth(size = .5, se = FALSE, method = lm)
+```
+**d.** On average, each increase in cm of height for women equates to a 0.17963391 increase in BMI, whereas men show a 0.1675512 (Height + Height:Gendermale) increase in BMI. The average woman of height 0 will have a BMI of  -1.36376929 whereas men will have a BMI of -1.462593 (Intercept - Gendermale).
+```{r}
+modBMI2 <- lm(data = NHANES, BMI ~ 1 + Height + Gender + Height:Gender)
+modBMI2$coefficients
+```
+**e.**
+```{r}
+NHANES %>%
+  ggplot(aes(x = Height, y = BMI, color = Gender)) +
+  geom_smooth(size = .5, se = FALSE, method = lm)
+```
+**f.** The model with interaction terms is better fit for our data as it allows variability of slopes within gender.
+
+
+
+
 
 ```{exercise, name="Logistic regression"}
    
@@ -264,3 +300,18 @@ c. Given the context of your research question, the model you created in the pre
 d. Using the threshold you identified in the previous part, find the false positive and false negative rates of your binary classifier on your data set.   
 
 ```
+**a.**
+```{r}
+NHANES %>%
+  ggplot(aes(color = SleepTrouble, x = Age)) +
+  geom_bar(position = "fill")
+```
+**b.** At birth, there are -1.80209774 odds that you have sleep trouble, every year, your odds of having sleep trouble increase by 1.562038%
+```{r}
+modSleep <- glm(data = NHANES, SleepTrouble ~ 1 + Age, family="binomial")
+modSleep$coefficients
+summary(modSleep)
+```
+**c.** With binary response variable 'SleepTrouble' our classification falls between 0 and 1 so our threshold should be 0.5 as anything above can be rounded to 1 and below can be rounded to 0.  
+**d.** Any negative above 0.5 is a false positive, and any positive below 0.5 is a false negative. We weren't sure how to calculate this in r. 
+

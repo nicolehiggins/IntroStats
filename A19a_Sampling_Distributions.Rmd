@@ -1,0 +1,456 @@
+---
+title: "Introduction to Statistical Modeling  <br> 
+Activity A19a: Sampling Distributions"
+author: "INSERT STUDENT NAME HERE"
+output: 
+  bookdown::html_document2:
+    toc: false
+    toc_float: true
+    toc_depth: 4
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+
+# Getting Started    
+
+There's a lot of new syntax today!  Don't let it be a distraction.  Just like `ggplot()`, facility will come with repeated use.  First, load some packages:    
+
+```{r message = FALSE, warning = FALSE}
+# Packages you definitely already have
+library(dplyr)
+library(ggplot2)
+
+# Packages you'll need but might not yet have
+library(infer)
+library(broom)
+library(gsheet)
+
+# Extra packages that aren't essential to completing the exercises
+library(choroplethr)
+library(choroplethrMaps)
+library(RColorBrewer)
+library(gridExtra)
+```
+
+If you get an error message for any of the packages, install them through the "Packages" tab in the lower right hand panel of RStudio. Make sure you can knit this file before proceeding.
+
+# Discussion: Exploratory Analysis vs. Inference
+
+The first half of the course, we focused on **exploratory questions** - what trends did we observe in *our data*?  For example, in a sample of 50 days of rental bike usage, we *see* that ridership was lower on days with greater wind:    
+
+```{r echo = FALSE, fig.width=6}
+bikes <- read.csv("https://www.macalester.edu/~dshuman1/data/155/bike_share.csv")
+set.seed(1555)
+bikes <- sample_n(bikes, size = 50)
+ggplot(bikes, aes(x = windspeed, y = riders_registered)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", se = FALSE)
+```
+
+
+Next, we want to ask **inferential questions**: given the randomness - hence potential error in this sample information - what can we conclude about the trends *in the broader population*?  For example, do we have enough evidence to support a claim that, in general, ridership decreases as windspeed increases?    
+    
+```{r echo = FALSE, fig.width=6}
+ggplot(bikes, aes(x = windspeed, y = riders_registered)) + 
+    geom_point() + 
+    geom_smooth(method = "lm")
+```
+
+
+# Sampling Distributions
+
+## Population Trend Example
+
+For the **population of "all" counties (outside Alaska)**, the following data set compiles information on the 2016 presidential election outcomes^[https://github.com/tonmcg/US_County_Level_Election_Results_08-16], demographic data^[From the `df_county_demographics` data set within the `choroplethr` package], and the designation of red/blue/purple states^[http://www.270towin.com/]:
+
+
+```{r}
+# Import data
+politics <- read.csv("https://www.macalester.edu/~ajohns24/Data/electionDemographics16.csv")
+
+# Just keep some columns of interest
+politics <- politics %>% 
+    select(county, polyname, region, trump_win = winrep_2016, trump_percent = perrep_2016, romney_2012 = perrep_2012, percent_white, per_capita_income, median_rent, median_age, StateColor)
+```
+
+
+
+Specifically, we have **complete population (census) data** on Trump's vote percentage in each county:    
+
+```{r fig.width = 6, fig.height = 3.5}
+# A map of Trump's percent vote
+map_data_1 <- politics %>% 
+    mutate(value = trump_percent)
+county_choropleth(map_data_1) +
+    scale_fill_manual(values = rev(brewer.pal(7,"RdBu")), name = "Trump %")
+```
+
+And features of each county, such as median rent:    
+
+```{r fig.width = 6, fig.height = 3.5}
+
+# A map of median rent
+map_data_2 <- politics %>% 
+    mutate(value = median_rent)
+county_choropleth(map_data_2) +
+    scale_fill_manual(values = rev(brewer.pal(7,"RdBu")), name = "Median Rent")
+```
+
+Based on these **complete population data** on all counties outside Alaska, we know that the relationship trend between Trump's 2016 support and the median rent in a county is:    
+
+$$\text{trump_percent} = 84.58 - 0.04 * \text{median_rent}$$
+
+```{r echo = FALSE}
+# Model trump_percent by median_rent
+population_mod <- lm(trump_percent ~ median_rent, data = politics)
+# population_mod$coefficients
+
+# Visualize the model
+ggplot(politics, aes(x = median_rent, y = trump_percent)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", se = FALSE)
+```
+
+
+## Different Samples, Different Estimates
+
+<br>
+
+**FORGET THAT YOU KNOW ALL OF THE ABOVE.**    
+
+Let's **pretend** that we are working within the typical scenario - we do not have access to the entire population of interest.  Instead, we need to **estimate** the true trend (regression line) using data from a randomly selected **sample** of counties.  That is, we’ll *use the sample model to estimate the true, but unknown population model*.  
+
+
+```{exercise,name="Sampling and randomness in RStudio"}
+We'll be taking some *random samples* of counties throughout this activity.  The underlying *random number generator* plays a role in the random sample we happen to get:    
+
+```
+
+```{r eval = FALSE}
+# Try the following chunk A FEW TIMES
+sample_n(politics, size = 2, replace = FALSE)
+```
+
+```{r eval = FALSE}
+# Try the following FULL chunk A FEW TIMES
+set.seed(155)
+sample_n(politics, size = 2, replace = FALSE)
+```
+    
+**NOTE:**  If we `set.seed(some positive integer)` before taking a random sample, we'll get the same results.  This **reproducibility** is important:    
+    
+- we get the same results every time we knit the Rmd    
+- we can share our work with others and ensure they get our same answers    
+- it would not be great if you submitted your work to, say, a journal, and weren't able to back up / confirm / reproduce your results!    
+
+
+```{exercise, name="Class experiment"} 
+Let's each take a sample and see what we get.   
+a. Let your seed be your birthday month (1 or 2 digits) and day (2 digits). For example January 5 is 105, September 10 is 910, October 5 is 1005, and December 10 is 1210. Set this in RStudio:    
+
+```
+
+```{r}
+set.seed(211)
+sample_n(politics, size = 10, replace = FALSE) -> sample1
+sample_n(politics, size = 10, replace = FALSE) -> sample2
+```    
+
+
+\noindent b. Take a random sample of **10** counties using the syntax above, and save it as `sample1`.      
+c. Construct and plot your sample model.  How close is this **estimate** to the actual population model (`trump_percent = 84.58 - 0.04 * median_rent`)?    
+d. Take *another* sample of 10 counties, save it as `sample2`, and repeat part (c). How does this compare to the population model?  The sample model calculated from `sample_1`?      
+e. Indicate your `sample_1` and `sample_2` intercept and slope *estimates* in [this survey](https://docs.google.com/forms/d/e/1FAIpQLSf67W-V0CZuwaU_ZdkVXArFc1km1Ru9WLpF7DniSrm8MWD-kw/viewform?usp=sf_link).
+
+```{r}
+(mod1 <- lm(data = sample1, trump_percent~median_rent))
+(mod2 <- lm(data = sample2, trump_percent~median_rent))
+```
+
+
+
+```{exercise,name="Comparing estimates"}  
+Import each student's estimates from Google sheets:    
+
+```
+
+```{r eval = FALSE}
+results <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1UxlQgAX5OWOz7DVfx2nxbPapnHMFlrpnwkxml6MVfk0/edit?usp=sharing')
+```
+    
+Compare the intercepts:
+```{r eval = FALSE}
+ggplot(results, aes(x = intercept)) + 
+    geom_histogram(color = "white")
+```
+
+Compare the slopes:
+```{r eval = FALSE}
+ggplot(results, aes(x = slope)) + 
+    geom_histogram(color = "white")
+```
+
+Compare the resulting models to the *true* population model in red:    
+```{r eval = FALSE}
+ggplot(politics, aes(x = median_rent, y = trump_percent)) +
+    geom_abline(data = results, aes(intercept = intercept, slope = slope), alpha = 0.75) + 
+    geom_smooth(method = "lm", color = "red", se = FALSE)
+```
+
+
+## Simulation Study
+
+Our little experiment reflects very few of the more than $_{3112}C_{10} > 2.3*10^{28}$ different samples of 10 counties that we could get from the entire population of 3112 counties!!  In this section, you'll run a *simulation* to study just how different these estimates could be.    
+
+
+```{exercise, name="Taking multiple samples"}
+Whereas `sample_n()` takes a single sample of size $n$ from a dataset, `rep_sample_n` takes *multiple* samples of size $n$.  To get a feel for it, take **4** samples of size **2**.  The `replicate` variable in the output indicates the sample (1, 2, 3, 4) to which each sampled case corresponds.        
+
+```
+
+```{r eval = FALSE}
+example1 <- rep_sample_n(politics, size = 2, reps = 4, replace = FALSE)
+dim(example1)
+example1
+```
+
+
+```{exercise, name="500 samples of size 10"}
+   
+a. To get a sense for the wide variety of samples we might get, take **500** samples of size $n$ = **10**.  Store these as `samples_10`.    
+
+```
+
+```{r eval=FALSE}
+set.seed(155)
+samples_10 <- rep_sample_n(politics, size = 10, reps = 500, replace = FALSE)
+```    
+
+
+\noindent b. Each sample produces a different estimate of the population model between `trump_percent` and `median_rent`.  Plot these **500** sample model estimates on the same frame:    
+
+```{r eval = FALSE}    
+ggplot(samples_10, aes(x = median_rent, y = trump_percent, group = replicate)) + 
+    geom_smooth(method = "lm", se = FALSE, size = 0.5) 
+```    
+
+
+
+```{exercise, name="500 sample slopes"}
+Let's focus on the slopes of these 500 sample models.   
+a. Save the 500 `median_rent` (slope) coefficients, stored under the `estimate` variable in the `slopes_10` data frame.        
+
+```
+
+```{r eval = FALSE}
+slopes_10 <- samples_10 %>%    
+    group_by(replicate) %>%     
+    do(lm(trump_percent ~ median_rent, data=.) %>% tidy()) %>% 
+    filter(term == "median_rent")
+
+# Check it out
+head(slopes_10)
+dim(slopes_10)
+```    
+    
+\noindent b. Construct a histogram of the 500 sample estimates of the true slope.  This histogram approximates a **sampling distribution** of the sample slopes.    
+
+```{r eval=FALSE}
+ggplot(slopes_10, aes(x = estimate)) + 
+    geom_histogram(color = "white", binwidth = 0.01) + 
+    lims(x = c(-0.20, 0.15))
+```    
+    
+\noindent c. Describe the sampling distribution: What's its general shape?  Where is it centered?  Roughly what is its spread? i.e., what is the range of estimates you observed?    
+    
+
+```{exercise, name="Increasing sample size"}
+Suppose we increased our sample size from `n=10` to `n=50`.  What impact do you anticipate this having on the sampling distribution of sample slopes:          
+
+- Around what value would you expect the distribution of sample slopes to be centered?    
+- What general shape would you expect the distribution to have?    
+- In comparison to estimates based on the samples of size 10, do you think the estimates based on samples of size 50 will be closer to or farther from the true slope (on average)?  Why?    
+    
+```
+
+```{exercise, name="500 samples of size 50"}
+Test your intuition.  Fill in the blanks to repeat the simulation process with samples of size n = 50.    
+
+```
+
+```{r eval=FALSE}
+# Take 500 samples of size n = 50
+set.seed(155)
+samples_50 <- rep_sample_n(politics, size = ___, reps = ___, replace = FALSE)
+
+# Plot the 500 sample model estimates
+ggplot(___, aes(x = ___, y = ___, group = ___)) + 
+    geom_smooth(method = "lm", se = FALSE, size = 0.5) 
+
+# Store the 500 slope estimates
+slopes_50 <- ___ %>%    
+    group_by(___) %>%     
+    do(lm(___ ~ ___, data = .) %>% tidy()) %>% 
+    filter(term == "median_rent")
+
+# Construct a histogram of the 500 sample slope estimates.    
+ggplot(___, aes(x = estimate)) + 
+    geom_histogram(color = "white", binwidth = 0.01) + 
+    lims(x = c(-0.20, 0.15))
+```    
+
+
+
+```{exercise, name="500 samples of size 200"}
+Finally, repeat the simulation process with samples of size $n$ = 200.    
+
+```
+
+```{r eval=FALSE}
+# Take 500 samples of size n = 200
+set.seed(155)
+samples_200 <- rep_sample_n(politics, size = ___, reps = ___, replace = FALSE)
+
+# Plot the 500 sample model estimates
+ggplot(___, aes(x = ___, y = ___, group = ___)) + 
+    geom_smooth(method = "lm", se = FALSE, size = 0.5) 
+
+# Store the 500 slope estimates
+slopes_200 <- ___ %>%    
+    group_by(___) %>%     
+    do(lm(___ ~ ___, data=.) %>% tidy()) %>% 
+    filter(term == "median_rent")
+
+# Construct a histogram of the 500 sample slope estimates.    
+ggplot(___, aes(x = estimate)) + 
+    geom_histogram(color = "white", binwidth = 0.01) + 
+    lims(x = c(-0.20, 0.15))
+```    
+
+
+```{exercise, name="Impact of sample size"}
+   
+a. Compare the sampling distributions of the sample slopes for the estimates based on sizes 10, 50, and 200 by plotting them on the same frame:    
+
+```
+
+```{r eval=FALSE}
+# Combine the estimates & sample size into a new data set
+simulation_data <- data.frame(
+  estimates = c(slopes_10$estimate, slopes_50$estimate, slopes_200$estimate), 
+  sample_size = rep(c("10","50","200"), each = 500))
+
+#Construct density plot
+ggplot(simulation_data, aes(x = estimates, color = sample_size)) + 
+  geom_density() + 
+  labs(title = "SAMPLING Distributions")
+```    
+    
+\noindent b. Calculate the **mean** and **standard deviation** in sample slopes calculated from samples of size 10, 50, and 200.  **NOTE:** We call the standard deviation **"standard error"** here -- an estimate's deviation from the mean reflects its *error*.    
+    
+```{r eval = FALSE}
+simulation_data %>% 
+    group_by(sample_size) %>% 
+    summarize(mean(estimates), sd(estimates))
+```
+        
+\noindent c. *Interpret* the three standard errors.    
+
+
+```{exercise, name="Properties of sampling distributions"}
+In light of your these investigations, complete the following statements.   
+a. For all sample sizes, the shape of the sampling distribution is ???.    
+b. As sample size increases:    
+    The average sample slope estimate INCREASES / DECREASES / IS FAIRLY STABLE.    
+    The standard deviation of the sample slopes INCREASES / DECREASES / IS FAIRLY STABLE.    
+c. Thus, as sample size increases, our sample slopes become MORE RELIABLE / LESS RELIABLE. 
+    
+```    
+ 
+
+## Reflection
+
+Consider a simple population model
+
+$$y = \beta_0 + \beta_1 x$$    
+
+In general, we don't know $\beta_0$ or $\beta_1$.  We are either working with ($x,y$) data on a *sample* of subjects from the broader population of interest or with a population that is in flux. Thus, our sample data give us an **estimate** of the population model:
+
+$$y = \hat{\beta}_0 + \hat{\beta}_1 x$$    
+
+What we know about the sample model:    
+
+- our estimates $\hat{\beta}_0$ and $\hat{\beta}_1$ will vary depending upon what data we happen to get   
+- there is error in these estimates    
+
+These concepts are captured in the **sampling distribution** of a sample estimate $\hat{\beta}$ (eg: $\hat{\beta}_0$ or $\hat{\beta_1}$).  Specifically, the sampling distribution of $\hat{\beta}$ is a distribution of all possible $\hat{\beta}$ we could observe based on all possible samples of the same size $n$ from the population.  It captures how $\hat{\beta}$ can vary from sample to sample.    
+
+
+```{r,echo=FALSE,out.width=500}
+knitr::include_graphics("https://www.macalester.edu/~dshuman1/data/155/samp_dist_map.png")
+```
+
+**Impact of sample size**    
+
+Below are sampling distributions of the sample slopes and sample models calculated from sample sizes of 10, 50, and 200 counties.  Notice that as sample size n increases:  
+
+- there is less variability (and more consistency) in the possible estimates from different samples 
+- we are less likely to get estimates that are far from the truth    
+
+```{r echo = FALSE, fig.width=8, fig.height=5,cache=TRUE}
+set.seed(155)
+samples_10 <- rep_sample_n(politics, size = 10, reps = 500, replace = FALSE)
+slopes_10 <- samples_10 %>%    
+            group_by(replicate) %>%     
+            do(lm(trump_percent ~ median_rent, data=.) %>% tidy()) %>% 
+            filter(term == "median_rent")
+
+set.seed(155)
+samples_50 <- rep_sample_n(politics, size = 50, reps = 500, replace = FALSE)
+slopes_50 <- samples_50 %>%    
+            group_by(replicate) %>%     
+            do(lm(trump_percent ~ median_rent, data=.) %>% tidy()) %>% 
+            filter(term == "median_rent")
+
+set.seed(155)
+samples_200 <- rep_sample_n(politics, size = 200, reps = 500, replace = FALSE)
+slopes_200 <- samples_200 %>%    
+            group_by(replicate) %>%     
+            do(lm(trump_percent ~ median_rent, data=.) %>% tidy()) %>% 
+            filter(term == "median_rent")
+g1 <- ggplot(slopes_10, aes(x = estimate)) + 
+    geom_histogram(color = "white", binwidth = 0.01) + 
+    lims(x = c(-0.20, 0.15)) + 
+    labs(title = "n=10")
+g4 <- ggplot(samples_10, aes(x = median_rent, y = trump_percent, group = replicate)) + 
+    geom_smooth(method = "lm", se = FALSE, size = 0.5)  +
+    labs(title = "n=10")
+
+g2 <- ggplot(slopes_50, aes(x = estimate)) + 
+    geom_histogram(color = "white", binwidth = 0.01) + 
+    lims(x = c(-0.20, 0.15)) + 
+    labs(title = "n=50")
+g5 <- ggplot(samples_50, aes(x = median_rent, y = trump_percent, group = replicate)) + 
+    geom_smooth(method = "lm", se = FALSE, size = 0.5)  + 
+    labs(title = "n=50")
+
+
+g3 <- ggplot(slopes_200, aes(x = estimate)) + 
+    geom_histogram(color = "white", binwidth = 0.01) + 
+    lims(x = c(-0.20, 0.15)) + 
+    labs(title = "n=200")
+g6 <- ggplot(samples_200, aes(x = median_rent, y = trump_percent, group = replicate)) + 
+    geom_smooth(method = "lm", se = FALSE, size = 0.5)  + 
+    labs(title = "n=200")
+
+grid.arrange(g1,g2,g3,g4,g5,g6,ncol=3)
+```
+
+
+**Standard error of $\hat{\beta}$**    
+
+The standard deviation of the sampling distribution, which is called the **standard error**, measures the typical error in the sample slopes calculated from sample to sample.  The greater the standard error, the less "reliable" the sample estimate.  As we've seen, standard error decreases as sample size $n$ increases.  In fact, for our models $$\text{standard error of } \hat{\beta} = \frac{c}{\sqrt{n}}$$ where $c$ has a complicated formula.
+

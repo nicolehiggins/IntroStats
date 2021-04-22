@@ -1,0 +1,620 @@
+---
+title: "Introduction to Statistical Modeling    <br> Homework 5"
+author: "Nicole Higgins"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(mosaic)
+library(infer)
+library(broom)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+\
+
+# Approximating Sampling Distributions
+
+Some statisticians have modeled the number of home runs per Major League Baseball game as a Poisson random variable (with a rate that may depend on stadium, teams playing, weather conditions, league-wide substance abuse at the time the game is played, and a host of other conditions). For simplicity, let's say that for the conditions in which we are interested, the average rate is one home run per game (which is in the reasonable range). 
+
+Here is the probability mass function of a Poisson distribution with $\lambda=1$:
+```{r,fig.width=4,fig.height=3}
+barplot(dpois(0:9,lambda=1),names.arg=c(0:9),xlab="Home Runs Per Game")
+```
+
+Actually, there is no upper bound on the possible number of home runs in a game, but according to this distribution, 99.99998886% of games have 9 home runs or fewer, so I've only shown those values.
+
+Note that the mean and standard deviation of a Poisson distribution with $\lambda=1$ are both equal to 1.
+
+```{exercise}
+Use the function `rpois` to generate a sample of the number of home runs in each of 50 games. Print out the mean number of home runs per game in your sample, and save the sample as 's1'.
+
+```
+
+```{r}
+rpois(50,lambda=1) -> s1
+mean(s1)
+```
+
+
+```{exercise}
+   
+a. Generate 1000 different samples of 50 and store the means of each sample, using the following code:
+  
+```
+**a.**
+```{r}
+sample_means<-rep(NA,1000)
+for (i in 1:1000){
+  sample_means[i]<-mean(rpois(50,lambda=1))
+}
+mean(sample_means)
+```
+
+\noindent b. Make a histogram or density plot of the sampling distribution of sample means for the number of home runs per game.   
+c. TRUE or FALSE: the probability of having more than 1 HR in a given game is equal to 50%.   
+d. Which do you expect to be closer to the actual average number of home runs per game: the mean of your sample `s1` above or the mean of the 1000 samples means? Briefly explain.      
+e. What is the standard deviation of the 1000 sample means? If you would like to cut this standard error in half, how would you change your sample size? Try it out numerically to confirm your answer.   
+
+**b.**
+```{r}
+ggplot(data.frame(x = sample_means), aes(x = x)) +
+  geom_density()
+```
+**c.** FALSE  
+**d.** The larger sample allows for a better approximation, therefore the sample_means mean would be closer to the actual.  
+**e.** To reduce the error by a factor of 2, we multiply our original sample size by a factor of 2 squared.
+```{r}
+sd(sample_means)
+sample_big<-rep(NA,1000)
+for (i in 1:1000){
+  sample_big[i]<-mean(rpois(50*2^2,lambda=1))
+}
+sd(sample_big)
+```
+
+
+```{exercise}
+Use your sample `s1` from above to generate 500 resamples of your single sample, and compute the mean of each resample as follows:
+  
+```
+
+```{r}
+set.seed(1)
+s1_resamples_50_means <- rep_sample_n(data.frame(s1), size = 50, reps = 500, replace = TRUE)%>%
+  group_by(replicate)%>%
+  summarize(resamp_mean=mean(s1))
+```
+
+\noindent a.  Estimate the mean and standard deviation of the sampling distribution of the sample mean (i.e., the standard error) via the bootstrap process above.   
+b. How do your answers compare to the mean and standard error you calculated above for 1000 samples of 50? to the population mean and standard deviation of 1?
+
+**a.** 
+```{r}
+mean(s1_resamples_50_means$resamp_mean)
+sd(s1_resamples_50_means$resamp_mean)
+```
+**b.** The mean is smaller (further from the actual), the standard error is smaller. Same goes for the population mean and standard deviation of 1. It is estimating the mean of the sample population and the standard error of a sample of 50.
+\
+
+# Confidence Intervals
+
+What does your head reveal about your intelligence?  Early explorations of the relationship between brain size and IQ were plagued by crude measurements (weighing brains after death).  In 1991, Willeman et al. conducted a study that used magnetic resonance imaging (MRI) to measure brain size.  The MRI scans consisted of 18 horizontal MR images that were 5 mm thick and 2.5 mm apart.  Further, each image covered a 256 $\times$ 256 pixel area.  Any pixel with a non-zero gray scale was considered to be ``part of the brain".  The following data set contains the study data for 38 subjects.
+
+```{r}
+brain <- read.csv("http://www.macalester.edu/~ajohns24/data/BrainEESEE.csv")
+```
+
+The variables in this data set include the following:
+
+Variable    Description
+----------- -------------------------------------------------------------------------------------------------------
+`MRICount`  total pixel count of non-zero gray scale in 18 MRI scans (the larger the count, the larger the brain!)
+`Height`    subject's height in inches
+`VIQ`       verbal IQ score
+`PIQ`       performance IQ score
+
+\
+
+## Distribution of the Response Variable
+
+Consider the brain sizes among our sample:
+
+```{r fig.align="center", fig.width=3, fig.height=2, echo=FALSE, warning=FALSE}
+library(ggplot2)
+ggplot(brain, aes(x=MRICount)) + 
+    geom_density()
+```
+
+The 95% **coverage interval** from the 2.5th to the 97.5th percentile of brain size is:
+```{r collapse=TRUE}
+quantile(brain$MRICount, c(0.025,0.975))
+```    
+
+\
+
+```{exercise}
+How can we interpret this interval? Choose one of the following:
+   
+i. 95% of sampled individuals have brain sizes in this range.    
+ii. We're 95% confident that the sample mean brain size is in this range.    
+iii. We're 95% confident that the population mean brain size is in this range. 
+
+```
+**i.**
+\
+
+## Sample Mean of the Response Variable
+
+Suppose we're interested in $\mu$, the true mean brain size of all adults as measured by MRI count.  This quantity is unknown but we can estimate it using the sample `MRICount` data.
+
+\
+
+```{exercise}
+   
+**a)** What is our sample mean estimate, $\overline{x}$, of $\mu$?
+
+
+**b)**  What is the probability that $\overline{x}$ overestimates $\mu$? 
+
+**c)**  What is the approximate probability that $\overline{x}$ is within 11771.07 pixels of $\mu$?
+
+**d)**  Calculate AND interpret a 95% confidence interval for $\mu$. 
+
+```
+
+\
+**a.** 906754.2 pixels
+```{r}
+mean(brain$MRICount)
+```
+**b.** 50%  
+**c.** 68%
+```{r}
+sd(brain$MRICount)/sqrt(38)
+```
+**d.** We are 95% confident that the true population mean lies within 793329.2 and 1063744  
+```{r}
+confint(brain$MRICount)
+```
+
+
+# Confidence Intervals for Model Coefficients
+
+Do smarter people have bigger brains? To this end, we are interested in the following partial relationship between brain size and verbal IQ when controlling for height:
+
+```
+MRICount ~ 1+ VIQ + Height
+```
+Remember, this means we want to find coefficients $a_0$, $a_1$, $a_2$ for the following model formula:
+
+`MRICount` = $a_0$ + $a_1$ `VIQ` + $a_2$ `Height`.
+
+Since we only have a sample, the true values of $a_0$, $a_1$, $a_2$ are unknown.  We instead  _estimate_ the model using our sample:
+
+`MRICount` = $\hat a_0$ + $\hat a_1$ `VIQ` + $\hat a_2$ `Height`.
+
+Similar to the results we saw for sample means, the Central Limit Theorem guarantees that, if we were to take many samples of the same size, the estimated coefficients $\hat a_0, \hat a_1, \hat a_2$ would be **approximately normally distributed**.  For each $a_i$ we have
+
+$\hat a_i \sim N(a_i,\text{s.e.}(\hat a_i))$
+
+where the standard error $\text{s.e.}.(\hat a)$ is given by a complicated formula that we have not seen yet.
+
+\
+
+```{exercise}
+Though we haven't discussed the formula for $\text{s.e.}(\hat a)$, you can reason about factors which would influence its value.   
+
+**a)**  As sample size increases, do you expect $\text{s.e.}(\hat a)$ to **increase** or **decrease**?  Explain your reasoning.
+
+**b)**  As the quality of our model improves (i.e. the relationship between the explanatory and response variables becomes stronger, leading to smaller residuals), do you expect $\text{s.e.}(\hat a)$ to **increase** or **decrease**?  Explain your reasoning.
+
+**c)**  As the multicollinearity among the explanatory variables increases, do you expect $\text{s.e.}(\hat a)$ to **increase** or **decrease**?  Explain your reasoning.
+
+```
+**a.** As sample size increases, we are collecting a larger percentage of the population thus we expect the standard error will decrease.  
+**b.** As the model quality increases, we are able to better fit the data so we expect a decrease in standard error.  
+**c.** As multicollinearity increases, there is repetitive data to fit thus we expect the standard error to increase.  
+\
+
+```{exercise}
+Create a model using the sample data to estimate the partial relationship between brain size and verbal IQ while controlling for height.  
+```
+
+```{r}
+mod1 = lm(formula = MRICount ~ VIQ + Height, data = brain)
+```
+
+**a)** Interpret the model coefficient $\hat a_1$ of `VIQ`.  Don't forget to control for height in your interpretation.
+
+**b)**  In the model summary - `summary(mod1)` - R reports the standard error for each coefficient.  In particular, you'll find the standard error of the `VIQ` coefficient $\hat a_1$ is reported to be 386.3 (_make sure that you see where this number is coming from in the R output_).  Use this standard error to compute **and interpret** a 95% CI for the true model coefficient $a_1$.
+
+
+**c)** R has a built in command for finding confidence intervals:
+```
+confint(mod1)
+```
+Compare your confidence interval to the one computed by R.  Are they the same? Are they close?  ("Yes" or "No" for each question will suffice.)
+
+The explanation for the discrepancy you noticed is that R uses a fancier method for finding confidence intervals based on a distribution that is more accurate than the normal distribution.
+
+**a.** On average, holding height constant, each increase in verbal IQ points results in a 1188.081 increase in MRI pixel count.
+```{r}
+mod1$coefficients
+```
+**b.** We are 95% confident that the true model coefficient lies within 415.5 and 1960.7.
+```{r, eval=FALSE}
+summary(mod1)
+```
+```{r}
+1188.1-(386.3*2)
+1188.1+(386.3*2)
+```
+  
+**c** Comparing these values to the one we calculated manually, the values are very similar but not the same.
+```{r}
+confint(mod1)
+```
+\
+
+```{exercise}
+We'd like to know if the CI from the previous question provides any evidence for a relationship between brain size and intelligence.
+
+**a)**  What would $a_1$ be if there were truly NO significant relationship between verbal IQ and brain size (when controlling for height)?
+
+**b)**  Reexamine the model summary table for `mod1` below.  
+```
+
+```{r collapse=TRUE, echo=FALSE}
+coef(summary(mod1))
+```
+    
+In the `VIQ` row, the `Estimate` (1188.1) of the `VIQ` coefficient is reported with a `Std. Error` (386.3).  Next to the standard error is the `t value` 3.075.  
+
+Show that the `t value` can be calculated by 
+$$\frac{\text{Estimate} - 0}{\text{Std. Error}}$$
+
+**c)** The `t value` measures the **number of standard errors that the Estimate is from 0**.  In our example: the estimated `VIQ` coefficient is 3.075 standard errors above 0.  Using the 68-95-99.7 Rule, how can we *quickly* interpret this comparison?  
+    i. 3.075 standard errors from 0 is a lot!  This provides fairly significant evidence that there *is* a relationship between verbal IQ and brain size.    
+    ii. 3.075 standard errors from 0 is nothing.  Thus we have only weak evidence of a relationship between verbal IQ and brain size.    
+    
+**d)** Let's be more careful.  Consider the following picture that illustrates the sample estimated `VIQ` coefficients that we'd *expect* to see if there were truly no relationship between verbal IQ and brain size, controlling for height.  Note: s.e. = standard error.    
+```{r collapse=TRUE, warning=FALSE, fig.width=6, fig.height=3.5, fig.align='center', echo=FALSE}
+    curve(dnorm(x), -5, 5, axes=FALSE, ylab="", xlab="")
+    box()
+    abline(v=0, lty=2)
+    axis(1, at=0, labels=0, cex=0.7)
+    axis(1, at=c(-4,-3,-2,-1,1,2,3,4), labels=c("-4 s.e.", "-3 s.e.","-2 s.e.","-1 s.e.","1 s.e.","2 s.e.","3 s.e.", "4 s.e."), cex=0.7)
+```
+    
+On this plot, describe the regions you would shade that represent estimates that are at least 3.075 standard errors away from 0.  NOTE: You should have two separate regions you would shade.
+
+**e)** Use the 68-95-99.7 rule to approximate the probability of the shaded region; i.e. of getting a sample with a `VIQ` that's more than 3.075 standard errors from 0, if in fact there's no relationship between verbal IQ and brain size, controlling for height, in the population.    
+    i. Less than 0.005 (really rare).  It's highly unlikely that we would've gotten a sample with such a large increase in brain size with verbal IQ if, in fact, there's no association between these variables.    
+    ii. Between 0.005 than 0.05 (pretty rare).  It's pretty unlikely that we would've gotten a sample with such a large increase in brain size with verbal IQ if, in fact, there's no association between these variables.    
+    iii. Between 0.05 and 0.32 (not very rare).  It wouldn't be unusual to observe a sample model like ours if, in fact, there's no association between these variables. 
+    
+**f)** Reexamine the model summary table for `mod1`.  The last value in the `Pr(>|t|)` column of the `VIQ` row gives a more precise calculation of this probability.  Report this probability and confirm that it aligns with your answer to the previous question.
+
+**g)**  Thus, combining all of the above observations, based on this 95% CI, does it appear that when controlling for height, people with higher verbal IQs have bigger brains? Explain your reasoning.
+
+\
+**a**
+If there were truly no significant relationship between verbal IQ and brain size, when controlling for height, a1 would be equal to zero.\
+
+**b**
+```{r}
+(1188.081-0)/386.345
+```
+
+**c**
+i.
+
+**d**
+We would shade the region from 3.075 to infinity and also shade from -3.075 to negative infinity.\
+
+**e**
+i.\
+
+**f**
+The probability from the model summary table for mod1 is 4.064967e-03. This value is smaller than 0.005 which is what we stated in part e, making the probability really rare.\
+
+**g**
+It does appear that when controlling for height, people with higher verbal IQs have bigger brains. This is because the VIQ coefficient is very positive and the confident interval is 3.075 meaning that it is 99.7% likely that the sample would have a correlation between increasing brain size and increasing verbal IQ.\
+
+```{exercise}
+Suppose we also want to control for one’s performance IQ. We can do so by fitting  
+```
+
+```{r}
+mod2 = lm(MRICount ~ VIQ + Height  + PIQ, brain)
+```
+
+**a)**  What is the standard error of the `VIQ` coefficient estimate in this model `mod2`?  Why does the standard error get so much larger when we add PIQ to the model? (HINT: Think back to your answers to Exercise 2.3.)
+
+
+**b)** Using the `confint()` command, construct a 95% CI for the VIQ coefficient in this new model. Based on this CI, does it appear that when controlling for height and performance IQ, people with higher verbal IQ’s have bigger brains? Why or why not?
+
+**c)**  Explain why your answer to part **b)** does not contradict your answer to part **g)** of the previous exercise. 
+
+\
+**a**
+```{r}
+summary(mod2)
+```
+The standard error for VIQ is 586.0. The standard error gets so much larger because another variable is added causing multicolinearity. Multicolinearity tends to increase standard error.\
+
+**b**
+```{r}
+confint(mod2)
+```
+When controlling for height and performance IQ, it appears that there is not necessarily a correlation between higher verbal IQ and bigger brains. This is because the CI has a very large range, meaning that we would be less confident in the relationship.\
+
+**c**
+Our answer for part b does not contradict our answer to part g because in part b there is an added variable (PIQ) which adds multicolinearity, causing this second model to be slightly different than model one.\
+
+
+
+
+```{exercise}
+Now let's think about the confidence interval procedure more generally.
+   
+**a)** Is a 99% confidence interval wider or narrower than a 95% confidence interval?    
+
+**b)** What are the bounds for a 100% confidence interval?    
+
+**c)** The higher the confidence level, the better! Do you agree? Why or why not?    
+
+```
+
+\
+**a**
+A 99% confidence interval is wider than a 95% confidence interval.\
+
+**b**
+The bounds for a 100% confidence interval are from negative infinity to positive infinity, which is highly unlikely.\
+
+**c**
+No, because the higher the confidence level, the more data that needs to be included in the trends. This can cause the relationships to be altered and makes the data more difficult to interpret, because the ranges are wider.\
+
+# Prediction and Confidence Bands
+
+Now let's explore the association between brain size and height.  The true relationship between these quantitative variables in the population of *all* adults can be represented by the equation
+
+
+<center>
+`MRICount = a + b Height`
+</center>
+
+
+where `a` and `b`, the true population intercept and height coefficient, are unknown.  Instead, we can *estimate* this model using our sample data:
+
+```{r collapse=TRUE, warning=FALSE, fig.width=4, fig.height=3, fig.align='center'}
+# fit the sample model
+brain_mod_1 <- lm(MRICount ~ Height, data=brain)
+coef(summary(brain_mod_1))
+
+# plot the model
+ggplot(brain, aes(x=Height, y=MRICount)) + 
+  geom_point() + 
+  geom_smooth(method="lm", se=FALSE) +
+  labs(x="Height (Inches)")
+```
+
+We can generate a 95% confidence interval for the slope:
+```{r}
+confint(brain_mod_1, level=0.95)
+```
+
+\
+
+```{exercise, name="Review"}   
+   
+a. How does this interval relate to the estimate and standard error in the table above?   
+b. Which of the following is a correct interpretation for the CI for the true population `Height` coefficient `b`?    
+
+i. We're 95% confident that for every 1 inch increase in height, the corresponding (average) increase in brain size for people in the population is between 5724.255 and 15655.78 pixels.       
+ii. We're 95% confident that for every 1 inch increase in height, the corresponding (average) increase in brain size for people in our sample is between 5724.255 and 15655.78 pixels.      
+iii. For 95% of individuals, brain size will increase by 5724.255 - 15655.78 pixels for every extra 1 inch increase in height.    
+
+```    
+
+\
+**a**
+This interval shows the range of slope values within 2 standard deviations for both the estimate and standard error in the table above.\
+
+**b**
+i.\
+
+Consider using the sample model to predict brain size by height:
+
+<center>
+`MRICount = 175332 + 10690 Height`
+</center>
+
+There are two types of predictions we can make for, say, a height of 72 inches (6 feet):
+
+- Predict the *average* brain size of *all* people that are 72 inches tall.
+
+- Predict the brain size of "*Jo*", a *specific* person that's 72 inches tall. 
+
+The values of the two predictions are the same:
+
+<center>
+`MRICount = 175332 + 10690*72 = 945012 pixels`
+</center>
+
+However, *the potential error in these predictions differs.*
+
+\
+
+```{exercise}
+Use your intuition.  There is more error in trying to predict...    
+
+i. the average brain size of all people that are 72 inches tall; or    
+ii. the brain size of Jo, a particular person that's 72 inches tall. 
+
+```   
+**ii.**
+<br>
+
+```{exercise}
+We can calculate intervals for these predictions in RStudio.  To begin, calculate and report the 95% *confidence interval* for the *average* brain size of *all* people that are 72 inches tall:    
+
+```
+
+```{r eval=FALSE}
+predict(brain_mod_1, newdata=data.frame(Height=72), interval="confidence", level=0.95)
+```
+    
+NOTE: `fit` is the prediction (which due to rounding is slightly different than our "by hand" prediction), `lwr` gives the lower bound of the CI, and `upr` gives the upper bound of the CI.
+
+<br>
+
+```{exercise}
+How can we interpret this interval?       
+i. Among the 72 inch tall people in our sample, we're 95% confident that the mean brain size is in this interval.    
+ii. Among all 72 inch tall people in the population, we're 95% confident that the mean brain size is in this interval.    
+iii. We're 95% confident that Jo's brain size is in this interval.
+
+```
+**ii.**
+\
+
+Note that the `geom_smooth()` in `ggplot` automatically adds confidence intervals for each value of the predictors. The default level is set to 95% confidence:
+
+```{r,fig.width=4,fig.height=3}
+ggplot(brain, aes(x=Height, y=MRICount)) + 
+  geom_point() + 
+  geom_smooth(method="lm")
+```
+    
+but we can also change it:
+```{r,fig.width=4,fig.height=3}
+ggplot(brain, aes(x=Height, y=MRICount)) + 
+  geom_point() + 
+  geom_smooth(method="lm",level=.99)
+```
+
+\
+
+
+```{exercise}
+Next, calculate and report the 95% **prediction interval (PI)** for the brain size of Jo, a *specific* person that is 72 inches tall:    
+  
+```
+
+```{r eval=FALSE}
+predict(brain_mod_1, newdata=data.frame(Height=72), interval="prediction", level=0.95)
+```
+    
+NOTE: The only difference between this and the function used above is the use of `interval="prediction"` instead of `"confidence"`.
+    
+\    
+
+```{exercise}
+    
+How can we interpret this interval?
+  
+i. Among the 72 inch tall people in our sample, we're 95% confident that the mean brain size is in this interval.    
+ii. Among all 72 inch tall people in the population, we're 95% confident that the mean brain size is in this interval.    
+iii. We're 95% confident that Jo's brain size is in this interval.
+
+```
+**iii.**
+\
+
+```{exercise}
+Which is wider: the interval for the average brain size of all people that are 72 inches tall OR the interval for the brain size of Jo, a specific person that is 72 inches tall?  **Explain why this makes intuitive sense.**
+  
+```
+**The interval for the brain size of Jo is wider than the interval for the average brain size of all people that are 72 inches tall. This makes intuitive sense because the sample size for an average is larger than the sample size of only Jo.  
+<br>
+
+    
+We can visualize these concepts by placing **prediction bands** and **confidence bands** around the entire model.  These represent the intervals calculated at each value of the `Height` variable.  Here is the syntax:    
+```{r}
+#Calculate and store prediction intervals for every Height value
+pred_int_1 <- data.frame(brain, predict(brain_mod_1, 
+  newdata = data.frame(Height=brain$Height), 
+  interval = 'prediction'))
+head(pred_int_1)
+
+#Plot regression line with prediction bands
+ggplot(pred_int_1, aes(x=Height, y=MRICount)) + 
+  geom_point() + 
+  geom_smooth(method='lm', color="black") + 
+  geom_ribbon(aes(y=fit, ymin=lwr, ymax=upr, fill='prediction'), 
+alpha=0.2)
+```
+    
+```{exercise}
+   
+In general...    
+
+a. Do the confidence bands (gray) capture the uncertainty of the AVERAGE TREND or the uncertainty of the INDIVIDUAL BEHAVIOR?       
+b. Do the prediction bands (pink) capture the uncertainty of the AVERAGE TREND or the uncertainty of the INDIVIDUAL BEHAVIOR?   
+  
+    
+```
+**a.** Average trend  
+**b.** Individual behavoir
+<br>
+
+```{exercise}
+Though it's not as noticeable with the prediction bands, these and the confidence bands are always the most narrow at the same point -- in this case the coordinates are (68.42105, 906754.2).  What other meaning do these values have?  Provide some proof and explain why it makes intuitive sense that the bands are narrowest at this point.
+
+```
+**These values are the mean of the sample data, proven below:**
+```{r}
+mean(brain$Height)
+mean(brain$MRICount)
+```
+**It makes sense that the bands are narrowest at this point because the data are centered around it; the closer to the mean the better predictions we can draw.**  
+
+
+Finally, let's do a similar process for a model of brain size by verbal IQ score (`VIQ`):
+```{r collapse=TRUE}
+brain_mod_2 <- lm(MRICount ~ VIQ, data=brain)
+summary(brain_mod_2)
+```
+
+\
+
+```{exercise}   
+   
+a. Interpret every value in the `VIQ` row of the summary table.    
+b. Construct and interpret a 95% confidence interval for the `VIQ` coefficient.       
+c. Combining these observations, what do you conclude about the relationship between verbal IQ score and brain size?  Do you have enough evidence to conclude that there's a "significant" association between these 2 variables?    
+d. Finally, construct and examine confidence and prediction bands for the model of brain size by VIQ:
+
+```
+**a.** Estimate: the estimated relationship between MRI Count and VIQ (slope) is 949.8  
+Std. Error: the standard deviation of slope values around the estimate is 502.9  
+t value: the estimate is 1.889 standard errors from 0  
+Pr(>|t|): the approximate probability of a slope being further than 1 t value from the estimate is 0.067  
+**b.** We are 95% confident that for every unit increase in VIQ, the average increase in MRI Count is between -70.02498 and 1969.689
+```{r}
+confint(brain_mod_2)
+```
+**c.** Since the Pr(>|t|) value is larger than 0.05, observing a model such as ours is not unlikely given no correlation between the two variables. Also, our confidence interval contains both positive and negative slopes, thus a slope of 0 is included in our confidence interval. These facts prove there is not a significant association between the two variables.  
+**d.** As seen below, a horizontal slope such as the line y = 900000 is possible within our confidence bands, thus there does not exist a strong correlation between the two. The confidence bands tell us the uncertainty of the average trend while the prediction bands tell us the uncertainty of individual behavoir.
+```{r eval=FALSE}
+pred_int_2 <- data.frame(brain, predict(brain_mod_2, 
+  newdata=data.frame(VIQ=brain$VIQ), 
+  interval = 'prediction'))
+
+#Plot regression line with prediction bands
+ggplot(pred_int_2, aes(x=VIQ, y=MRICount)) + 
+  geom_point() + 
+  geom_smooth(method='lm', color="black") + 
+  geom_ribbon(aes(y=fit, ymin=lwr, ymax=upr, fill='prediction'), 
+alpha=0.2)
+```
+
+
