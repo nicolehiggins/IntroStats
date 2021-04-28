@@ -1,0 +1,282 @@
+---
+title: "Introduction to Statistical Modeling    <br> Homework 6"
+author: "Nicole Higgins"
+output: 
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(mosaic)
+knitr::opts_chunk$set(warning = FALSE, message=FALSE)
+```
+
+\
+
+# One and Two Sample t-Tests
+
+\
+ 
+```{exercise}
+In 2009, Thai researchers conducted a wide study of a new AIDS vaccine that was considered a "modest success." Of the 8197 patients given the vaccine, 51 (0.6%) contracted HIV. On the other hand, of the 8198 patients given a placebo, 74 (0.9%) contracted HIV. That is, the infection rate in the placebo group was roughly 30% higher than in the vaccine group, a difference which led to a p-value of 0.04.   
+
+(a) Though they’re not explicitly stated, what hypotheses were being evaluated by this p-value?   
+(b) A "prominent AIDS vaccine researcher" interpreted the p-value to mean that the "probability that this vaccine didn’t work was only 4%." He was wrong. What is the correct interpretation of the p-value in this case?
+  
+PS: You can read about the strong reaction of Victor De Gruttola, the chair of biostatistics at the Harvard School of Public Health, to his colleague’s misinterpretation of the p-value in [this *Science* article](https://www.sciencemag.org/news/2009/10/mission-improbable-concise-and-precise-definition-p-value).
+
+PPS: There are other issues with this study (like practical vs statistical significance) which we'll discuss later. For now, just focus on the misinterpretation of the p- value!  
+
+```
+
+\
+**a.** The null hypothesis is an ineffective vaccine, expecting no difference between the groups. The alternative hypothesis is expecting those who got the vaccine to have statistically significantly lower rates of infection than the placebo group.  
+**b.** Assuming the null hypothesis is true, the p-value is the probability we would observe a result equal to or larger than we did.  
+
+```{exercise}
+In a quest to develop an accurate spam filter, Hewlett Packard studied the characteristics of 800 emails: 300 spam, 500 real. For each email, they recorded 54 characteristics. Among these was `char_freq_exclamation`, the percentage of characters in the email that are "!" (0–100). Import these data and divide them into real / spam subsets:
+   
+```
+
+\
+
+```{r}
+email <- read_csv("https://www.macalester.edu/~dshuman1/data/155/spamtest.csv") 
+rmail <- subset(email, spam == 0)
+smail <- subset(email, spam == 1)
+```
+
+Throughout, let $\mu_R$ = the unknown mean percentage of characters in real emails that are "!". define $\mu_S$ similary for spam emails. Let's calculate sample mean estimates of $\mu_R$ and $\mu_S$:
+
+```{r}
+mean(rmail$char_freq_exclamation)
+mean(smail$char_freq_exclamation)
+```
+
+Do these provide enough evidence that $\mu_R$ > 0.05? That $\mu_S$ > $\mu_R$?
+   
+a. To begin, let's test whether, on average, more than 0.05% of real email characters
+are "!". Using the $\mu_R$ notation, what are the hypotheses, $H_0$ and $H_a$?   
+**H_0 is assuming mu_R = 0.05. H_a is assuming mu_R > 0.05.** 
+
+b. Now let's test these hypotheses in `R`:  
+
+```{r}
+t.test(rmail$char_freq_exclamation, mu=0.05, alternative="greater")
+```
+| Interpret the standardized test statistic (t value).
+**Our t-value, 1.4272, is the number of standard-errors away from 0 that our observation is, given the null hypothesis is true. Since this value is less than 2, we do not have 95% confidence about H_a.**
+
+c. Interpret the p-value for this test. What conclusion will you make at the $\alpha = 0.05$ level? What type of error might you be making?  
+**Given the null hypothesis is true, we will observe ! frequency as or more extreme than ours 7.707% of the time. Since this p-value is greater than 0.05, we fail to reject the null hypothesis at the alpha = 0.05 level.**
+   
+d. How does "!" usage compare in spam and real emails? Use the sample data to estimate the difference $\mu_S - \mu_R$. Write down the hypotheses, $H_0$ and $H_a$, we should test to see if this difference provides enough evidence to conclude that the frequency of "!" is higher for spam than for real emails.  
+**H_0 is assuming no correlation between email type and ! frequency, mu_R = mu_S. H_a is assuming spam emails have a higher frequency of !, mu_S > mu_R.**
+
+e. Test these hypotheses in `R`: 
+
+```{r}
+t.test(smail$char_freq_exclamation, rmail$char_freq_exclamation, alternative="greater")
+```
+
+|   Interpret the standardized test statistic (t) (this puts our answer to (d) into context by incorporating the potential errors in our estimates). **Our results are 9.3661 standard errors away from 0.**
+
+f. The p-value corresponding to this test statistic is < 2.2e-16. You’ll see this quantity a lot. It’s `R`’s way of communicating that the p-value is so small, it is even less than $2.2 ∗ 10^{−16}$! Interpret the p-value – what does this number tell us?   
+**This number is so close to 0, we will almost never observe our results assuming the null hypothesis is true. This tells us there is a statistically significant difference between email types' ! frequency.**  
+
+g. Based on this p-value, what conclusion can you make at the $\alpha=.05$ level? What type of error might you be making?  
+**At the alpha = 0.05 level, we can reject the null hypothesis and conclude mu_S is greater than mu_R. We may be making a type 1 error, incorrectly identifying emails as spam.**  
+\
+
+```{exercise}
+In 2002, John McCain and John Kerry proposed new auto standards that would have forced manufacturers to increase fuel economy. Carl Levin of Michigan proposed an amendment to the proposal that would delay any required increase in fuel economy. Hence a YES vote on the Levin amendment was good news for manufacturers. 
+   
+```
+
+Here are the data:
+```{r}
+votes<-read_csv("https://www.macalester.edu/~ajohns24/data/Senate.csv")
+head(votes)
+```
+
+The data contain information on the 100 members of the 2002 U.S. Senate. Included are the following variables 
+   
+- `Vote`:  the member’s vote on the Levin Amendment (1=YES, 0=NO)     
+- `AutoCont`: the amount of money (in $) each senator received in contributions from auto manufacturers that year 
+- `Party`: political party affiliation (not needed for this exercise) 
+
+a) Construct a plot that allows you to explore the relationship between senators’ votes and their received contributions from the auto industry. Comment on this plot.
+```{r}
+ggplot(votes) +
+   geom_boxplot(aes(x = as.factor(Vote), y = AutoCont))
+```
+**Senators who votes yes on the amendment received more money from auto manufacturers, on average, than those who voted no.**
+
+There is one clear outlier in this data: Levin himself, who received the most money from the auto industry (surprise!). It is also no surprise he voted for his own amendment. Let's take him out of the data so that he does not skew our analysis:
+       
+```{r}
+votes.ex.Levin <- subset(votes, AutoCont < 100000)
+```
+
+b) Now, conduct a test to determine whether the typical auto contribution of senators that voted YES on the amendment is greater than the typical contribution of senators that voted NO (ignore `Party` for this analysis).
+
+- Give the name of the test you are using
+(ex: one sample t-test, two sample t-test, overall F test, ANOVA, etc)  
+**two sample t-test**  
+
+- State the appropriate null and alternative hypotheses  
+**H_0 assumes mu_Y = mu_N, the contributions did not affect votes. H_a assumes mu_Y > mu_N, those who voted yes received greater contributions.**  
+
+- Give the p-value for this test and interpret its meaning in the context of this
+problem  
+```{r}
+t.test(votes%>%filter(Vote=="1")%>%select(AutoCont), votes%>%filter(Vote=="0")%>%select(AutoCont), alternative="greater")
+```
+**The p-value is very close to 0, meaning the chances of observing a difference this large or larger are nearly 0.**
+
+- State your conclusion in the context of this problem. In other words, what do you conclude about the relationship between senate contributions and senate votes (at least in settings similar to this one)?  
+**We conclude that there is a statistically significant difference in auto manufacturer contributions between senators who votes yes and senators who voted no. Specifically, senators who voted yes received more contributions, on average, than senators who voted no.**
+
+c) Are your results statistically significant, practically significant, both, or neither? EXPLAIN.
+**Our results are both statistically and practically significant. They are statistically significant given our miniscule p-value. They are practically significant given the drastic difference in means, and the real-world impact of money on how senators vote.**
+
+\
+
+# Hypothesis Testing on Models
+
+
+\
+
+## Video Games
+
+The data set
+```{r}
+vids <- read_csv("https://www.macalester.edu/~dshuman1/data/155/VideoGames.csv")
+```
+
+contains sales and other information for 104 different video games. The variables include
+
+- `GameSales` = number of games sold   
+- `UserReview` = average user review of the game (on a scale from 0-100)    
+- `CriticReview` = average critic review of the game (on a scale from 0-100)     
+- `SystemExclusive` = indicates whether the game is a system exclusive   
+- `DaysReleased` = number of days game had been released at time of data collection   
+
+
+```{exercise}
+Let's fit the following model: 
+   
+```
+
+```{r}
+mod1<- lm(data=vids,GameSales ~ DaysReleased + SystemExclusive + CriticReview)
+summary(mod1)
+```
+
+a) What percentage of the variation in game sales is explained by this model?
+
+b) As a whole, does this model explain a significant amount of the variation in game sales? Support your answer with a p-value and state your conclusion in the context of this problem. What type of test are you using?
+
+c) Interpret the results of the hypothesis test results reported in the `CriticReview` row of the `summary(mod1)` regression table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test?
+
+d) Interpret the hypothesis test results reported in the `SystemExclusiveY` row of the `summary(mod1)` table. Support your answer with a p-value and state your conclusion in the context of this problem.
+
+
+```{exercise}
+Adding `UserReview` might increase our ability to explain the variation in game sales. Fit the new model:
+    
+```
+
+```{r}
+mod2<-lm(data=vids,GameSales ~ DaysReleased + SystemExclusive + CriticReview + UserReview)
+summary(mod2)
+anova(mod2)
+```
+
+a) Interpret the hypothesis test results reported in the `CriticReview` row of the summary(mod2) table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test?
+
+b) Interpret the hypothesis test results reported in the `CriticReview` row of the `anova(mod2)` table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test?
+
+c) Compare your answers to (a) and (b). Explain why `CriticReview` is significant in one of these tests but not the other.
+
+\
+
+## SAT Scores by State
+
+The SAT data frame in the `mosaic` package contains information on state-level education from 1994-1995. 
+Each row represents a state, and the variables include:
+   
+- `expend`: per pupil expenditure (in thousands of dollars)
+- `frac`: percentage of students taking the SAT
+- `ratio`: the pupil/teacher ratio
+- `salary`: average teacher salary (in thousands of dollars)
+- `math`:  average math SAT score for the state
+- `verbal`: average verbal SAT score for the state
+
+\
+
+```{exercise}
+Model the average math score by `ratio`, `expend`, `salary`, `frac`, and `verbal`:
+   
+```
+
+```{r}
+modSAT <- lm(math ~ ratio + expend + salary + frac + verbal, data=SAT)
+summary(modSAT)
+```
+
+For now, only look at the summary table.
+
+a) Overall, does the model explain a significant amount of the variability in math scores from state to state? Support your answer with a p-value and specify the test you’re using.
+
+b) Interpret the estimated `expend` coefficient.
+
+c) Interpret the t value in the `expend` row.
+
+d) What conclusions can you make from the p-value in the `expend` row?
+
+e) Notice that `verbal` is the only variable with a significant t-test. Based on this, can we argue that it makes sense to take the other variables out of our model since they aren’t adding a significant amount of useful information about math scores? (The answer is no. Explain why.)
+
+
+f) Next, check out the ANOVA table:
+
+```{r}
+anova(modSAT)
+```
+
+Whereas only `verbal` had a significant t-test, ALL variables have significant ANOVA tests. Good thing you didn’t get rid of all of those variables!
+
+What conclusion can we make about `ratio` using the ANOVA test? Be sure to indicate what (if any) variables are being controlled for.
+
+g) What conclusion can we make about `expend` using the ANOVA test? Be sure to indicate what (if any) variables are being controlled for.
+
+h) What explains the differences between the t-tests and ANOVA tests?
+
+i) Which variable, when included on top of its preceding variables, results in the largest increase in $R^2$? Give some numerical support.
+
+j) Use the ANOVA table to show that $R^2=.9489$.
+
+
+
+\
+
+```{exercise}
+The objective of this question is to explore the effect of order of the variables in the model on the regression and term-by-term ANOVA reports. Let's fit a second model for the `math` variable, with exactly the same explanatory variables, but in a different order:   
+```
+
+```{r}
+modSAT2 <- lm(math ~ verbal+frac+ratio + expend + salary, data=SAT)
+summary(modSAT2)
+anova(modSAT2)
+```
+
+a) Are the t-statistics and p-values from the regression report different from those found using `modSAT`? Explain why.
+
+b) Are the F-statistics and p-values from the term-by-term ANOVA report different from those found using `modSAT1`? Explain why.
+
+c) Explain the difference in how we interpret the `frac` row of the ANOVA report in this case (`modSAT2`), as compared to the previous question (`modSAT`).
+
+
