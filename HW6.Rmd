@@ -176,15 +176,20 @@ mod1<- lm(data=vids,GameSales ~ DaysReleased + SystemExclusive + CriticReview)
 summary(mod1)
 ```
 
-a) What percentage of the variation in game sales is explained by this model?
+a) What percentage of the variation in game sales is explained by this model? **31.25%**
 
-b) As a whole, does this model explain a significant amount of the variation in game sales? Support your answer with a p-value and state your conclusion in the context of this problem. What type of test are you using?
+b) As a whole, does this model explain a significant amount of the variation in game sales? Support your answer with a p-value and state your conclusion in the context of this problem. What type of test are you using? **Using the global f-test, we get a p-value close to 0; this means the model is statistically significantly better at explaining variation in game sales than just using the mean (where we assume all coefficients are equal to 0).**
 
-c) Interpret the results of the hypothesis test results reported in the `CriticReview` row of the `summary(mod1)` regression table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test?
+c) Interpret the results of the hypothesis test results reported in the `CriticReview` row of the `summary(mod1)` regression table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test? **Assuming all other variables are 0, the CriticReview estimate tells us a 1% increase in critic reviews is associated to an increase in game sales of 79070, on average. Our estimate is 3.557 standard errors (22229.4) away from the null hypothesis (0). The relatively small p-value (0.000575) gives us reason to reject the null hypothesis (no relation between critic reviews and sales) at alpha = 0.05, and conclude the true slope is statistically significant (our alternative hypothesis), the reviews of critics has a significant effect on game sales.**
 
-d) Interpret the hypothesis test results reported in the `SystemExclusiveY` row of the `summary(mod1)` table. Support your answer with a p-value and state your conclusion in the context of this problem.
-
-
+d) Interpret the hypothesis test results reported in the `SystemExclusiveY` row of the `summary(mod1)` table. Support your answer with a p-value and state your conclusion in the context of this problem. **Assuming all other variables are 0, the SystemExclusiveY estimate tells us the game being a system exclusive is associated to an increase in game sales of 251339.9, on average. Our estimate is 0.554 standard errors (453633.1) away from the null hypothesis (0). The relatively large p-value (0.580775) does not give us reason to reject the null hypothesis (no relation between exclusivity and sales) at alpha = 0.05, and conclude the true slope is not statistically significant (our alternative hypothesis), the exclusivity does not have a significant effect on game sales and thus could be removed from the model.**
+\
+\
+\
+*ignore the following. thanks for your time and enjoy the summer!*
+\
+\
+\
 ```{exercise}
 Adding `UserReview` might increase our ability to explain the variation in game sales. Fit the new model:
     
@@ -196,11 +201,11 @@ summary(mod2)
 anova(mod2)
 ```
 
-a) Interpret the hypothesis test results reported in the `CriticReview` row of the summary(mod2) table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test?
+a) Interpret the hypothesis test results reported in the `CriticReview` row of the summary(mod2) table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test? **Assuming all other variables are 0, the CriticReview estimate tells us a 1% increase in critic reviews is associated to an increase in game sales of 20995, on average. Our estimate is 0.665 standard errors (31590.3) away from the null hypothesis (0). The relatively large p-value (0.507850) does not give us reason to reject the null hypothesis (no relation between critic reviews and sales) at alpha = 0.05, and conclude the true slope is not statistically significant (cannot conclude our alternative hypothesis), the reviews of critics does not have a significant effect on game sales.**
 
-b) Interpret the hypothesis test results reported in the `CriticReview` row of the `anova(mod2)` table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test?
+b) Interpret the hypothesis test results reported in the `CriticReview` row of the `anova(mod2)` table. Support your answer with a p-value and state your conclusion in the context of this problem. What are the null and alternative hypotheses for this test? **The CriticReview row takes DaysReleased and SystemExclusive into account. The significant decrease from SystemExclusive's p-value to Critic Review's, as well as the resulting p-value's relatively small size, tells us there is statistically significant variance explained by this variable. The null hypothesis assumes DaysReleased and SystemExclusive are as explained in the model, and CriticReview is 0; the alternative hypothesis assumes DaysReleased and SystemExclusive are as explained in the model, and Critic Review is not 0. Thus we can conclude critic reviews do affect game sales.**
 
-c) Compare your answers to (a) and (b). Explain why `CriticReview` is significant in one of these tests but not the other.
+c) Compare your answers to (a) and (b). Explain why `CriticReview` is significant in one of these tests but not the other. **CriticReview is statistically significant in (b) but not (a) because (a) takes into account UserReview, which we can assume is similar to CriticReview and thus devalues its significance.**
 
 \
 
@@ -230,15 +235,15 @@ summary(modSAT)
 
 For now, only look at the summary table.
 
-a) Overall, does the model explain a significant amount of the variability in math scores from state to state? Support your answer with a p-value and specify the test you’re using.
+a) Overall, does the model explain a significant amount of the variability in math scores from state to state? Support your answer with a p-value and specify the test you’re using. **Yes, since the resulting p-value is nearly 0. This is a global f-test.**
 
-b) Interpret the estimated `expend` coefficient.
+b) Interpret the estimated `expend` coefficient. **Every extra thousand of dollars expended per pupil results in a 1.77005 increase in math score, on average.**
 
-c) Interpret the t value in the `expend` row.
+c) Interpret the t value in the `expend` row. **Our estimate is 0.572 standard errors (3.09516) from 0.**
 
-d) What conclusions can you make from the p-value in the `expend` row?
+d) What conclusions can you make from the p-value in the `expend` row? **Since the p-value is relatively large (0.570), we cannot reject the null hypothesis that expenditure does not affect math score.**
 
-e) Notice that `verbal` is the only variable with a significant t-test. Based on this, can we argue that it makes sense to take the other variables out of our model since they aren’t adding a significant amount of useful information about math scores? (The answer is no. Explain why.)
+e) Notice that `verbal` is the only variable with a significant t-test. Based on this, can we argue that it makes sense to take the other variables out of our model since they aren’t adding a significant amount of useful information about math scores? (The answer is no. Explain why.) **This model explains 95% of the variance in the data, **
 
 
 f) Next, check out the ANOVA table:
